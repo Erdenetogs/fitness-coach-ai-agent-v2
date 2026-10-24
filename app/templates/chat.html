@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Дасгалжуулагч{% endblock %}
+{% block body %}
+<div class="mx-auto max-w-md min-h-screen flex flex-col">
+  <header class="sticky top-0 z-10 bg-paper/95 backdrop-blur px-3 pt-4 pb-3 flex items-center gap-2 border-b border-line">
+    <a href="/" class="w-10 h-10 grid place-items-center rounded-xl" aria-label="Нүүр рүү буцах"><span class="msr">arrow_back</span></a>
+    <div class="w-10 h-10 rounded-xl bg-ink text-white grid place-items-center"><span class="msr fill">bolt</span></div>
+    <div class="flex-1">
+      <h1 class="font-semibold leading-tight">FitCoach дасгалжуулагч</h1>
+      <p class="text-[12px] text-ink-2">{{ 'Claude AI агент' if ai_live else 'Демо горим · API түлхүүргүй' }}</p>
+    </div>
+  </header>
+
+  <main id="log" class="flex-1 px-4 py-4 space-y-3" aria-live="polite">
+    {% for m in messages %}
+      {% if m.role == 'user' %}
+      <div class="flex justify-end"><p class="bubble-user px-4 py-2.5 max-w-[80%] whitespace-pre-line">{{ m.content }}</p></div>
+      {% else %}
+      <div class="max-w-[88%]">
+        {% if m.agent_steps %}<div class="space-y-1 mb-2">{% for s in m.agent_steps %}<div class="step"><span class="msr">{{ s.icon }}</span>{{ s.text }}</div>{% endfor %}</div>{% endif %}
+        <p class="bubble-ai px-4 py-2.5 whitespace-pre-line">{{ m.content }}</p>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </main>
+
+  <div class="sticky bottom-0 bg-paper/95 backdrop-blur border-t border-line px-3 pt-2.5" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom))">
+    <div id="chips" class="flex gap-2 overflow-x-auto pb-2.5 [scrollbar-width:none]">
+      {% for q in ['Өнөөдрийн дасгалаа хөнгөлөөч', 'Жин 64.5 кг боллоо', 'Өдөрт хэдэн калори идэх вэ?', 'Энэ долоо хоногийн явц хэр байна?', 'Зүүн өвдөг өвдөж байна'] %}
+      <button type="button" class="chip flex-none text-[13px] bg-white border border-line rounded-full px-3 py-1.5">{{ q }}</button>
+      {% endfor %}
+    </div>
+    <form id="chat-form" class="flex items-end gap-2">
+      <label for="msg" class="sr-only">Мессеж</label>
+      <textarea id="msg" rows="1" maxlength="1000" placeholder="Дасгалжуулагчаас асуух…" class="field resize-none max-h-32 py-2.5"></textarea>
+      <button id="send" class="btn btn-primary w-12 h-12 p-0 flex-none" aria-label="Илгээх"><span class="msr fill">send</span></button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const log = document.getElementById("log");
+  const form = document.getElementById("chat-form");
+  const input = document.getElementById("msg");
+  const sendBtn = document.getElementById("send");
+
+  const scrollDown = () => window.scrollTo({ top: document.body.scrollHeight });
+  scrollDown();
+
+  function addUser(text) {
+    log.insertAdjacentHTML("beforeend", `<div class="flex justify-end"><p class="bubble-user px-4 py-2.5 max-w-[80%] whitespace-pre-line">${escapeHtml(text)}</p></div>`);
+  }
+  function addAi(text, steps, planChanged) {
+    const link = planChanged ? `<a href="/workout" class="inline-flex items-center gap-1 text-track text-sm font-medium mt-2"><span class="msr text-[18px]">calendar_month</span>Шинэчилсэн төлөвлөгөөг харах</a>` : "";
+    log.insertAdjacentHTML("beforeend", `<div class="max-w-[88%]">${renderSteps(steps)}<p class="bubble-ai px-4 py-2.5 whitespace-pre-line">${escapeHtml(text)}</p>${link}</div>`);
+  }
+
+  async function send(text) {
+    text = text.trim();
+    if (!text) return;
+    addUser(text);
+    input.value = ""; input.style.height = "";
+    sendBtn.disabled = true;
+    const typing = document.createElement("div");
+    typing.className = "bubble-ai inline-flex gap-1.5 px-4 py-3.5 typing";
+    typing.setAttribute("aria-label", "Дасгалжуулагч бодож байна");
+    typing.innerHTML = "<span></span><span></span><span></span>";
+    log.appendChild(typing); scrollDown();
+    try {
+      const data = await api("/api/chat", { json: { message: text } });
+      typing.remove();
+      addAi(data.reply, data.agent_steps, data.plan_changed);
+    } catch (e) {
+      typing.remove();
+      addAi(e.message + " Дахин оролдоно уу.", []);
+    } finally {
+      sendBtn.disabled = false; scrollDown(); input.focus();
+    }
+  }
+
+  form.addEventListener("submit", (e) => { e.preventDefault(); send(input.value); });
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); } });
+  input.addEventListener("input", () => { input.style.height = "auto"; input.style.height = Math.min(input.scrollHeight, 128) + "px"; });
+  document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => send(c.textContent)));
+
+  const q = new URLSearchParams(location.search).get("q");
+  if (q) { input.value = q; input.focus(); history.replaceState(null, "", "/chat"); }
+</script>
+{% endblock %}

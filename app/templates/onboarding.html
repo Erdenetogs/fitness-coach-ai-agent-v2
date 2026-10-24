@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% block title %}Эхлэх{% endblock %}
+{% block body %}
+<div class="mx-auto max-w-md min-h-screen flex flex-col px-5 pt-10 pb-8">
+  <div class="flex items-center gap-2 mb-8">
+    <div class="w-9 h-9 rounded-xl bg-ink text-white grid place-items-center"><span class="msr fill">bolt</span></div>
+    <span class="font-display font-semibold">FitCoach</span>
+  </div>
+
+  <div class="flex gap-1.5 mb-6" aria-hidden="true">
+    {% for i in range(4) %}<div class="ob-bar h-1.5 flex-1 rounded-full bg-line"></div>{% endfor %}
+  </div>
+
+  <form id="ob-form" method="post" action="/onboarding" class="flex-1 flex flex-col" novalidate>
+    <!-- 1. Нэр -->
+    <section class="ob-step space-y-5" data-step="0">
+      <div>
+        <h1 class="font-display text-[26px] leading-tight font-semibold">Сайн уу! Танилцъя.</h1>
+        <p class="text-ink-2 mt-2">Таны мэдээллээр AI дасгалжуулагч хувийн төлөвлөгөө гаргана.</p>
+      </div>
+      <div>
+        <label class="label" for="name">Таны нэр</label>
+        <input class="field" id="name" name="name" required maxlength="40" autocomplete="given-name" placeholder="Жишээ: Баяраа">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="label" for="age">Нас</label>
+          <input class="field" id="age" name="age" type="number" inputmode="numeric" min="14" max="80" required placeholder="21">
+        </div>
+        <fieldset>
+          <legend class="label">Хүйс</legend>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="choice relative"><input type="radio" name="gender" value="male" required><span class="justify-center">Эр</span></label>
+            <label class="choice relative"><input type="radio" name="gender" value="female"><span class="justify-center">Эм</span></label>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    <!-- 2. Бие -->
+    <section class="ob-step space-y-5 hidden" data-step="1">
+      <div>
+        <h1 class="font-display text-[26px] leading-tight font-semibold">Биеийн хэмжээ</h1>
+        <p class="text-ink-2 mt-2">Өдрийн калорийн хэрэгцээг тооцоход ашиглана.</p>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="label" for="height_cm">Өндөр (см)</label>
+          <input class="field" id="height_cm" name="height_cm" type="number" inputmode="decimal" min="120" max="230" step="0.1" required placeholder="170">
+        </div>
+        <div>
+          <label class="label" for="weight_kg">Жин (кг)</label>
+          <input class="field" id="weight_kg" name="weight_kg" type="number" inputmode="decimal" min="30" max="250" step="0.1" required placeholder="65">
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Зорилго -->
+    <section class="ob-step space-y-5 hidden" data-step="2">
+      <div>
+        <h1 class="font-display text-[26px] leading-tight font-semibold">Таны зорилго юу вэ?</h1>
+      </div>
+      <fieldset class="space-y-2.5">
+        <legend class="sr-only">Зорилго</legend>
+        {% for key, icon in [('lose','local_fire_department'),('gain','fitness_center'),('fit','favorite')] %}
+        <label class="choice relative block"><input type="radio" name="goal" value="{{ key }}" required>
+          <span><span class="msr">{{ icon }}</span>{{ GOALS[key] }}</span></label>
+        {% endfor %}
+      </fieldset>
+      <fieldset>
+        <legend class="label">Дасгалын туршлага</legend>
+        <div class="grid grid-cols-3 gap-2">
+          {% for key, label in LEVELS.items() %}
+          <label class="choice relative"><input type="radio" name="level" value="{{ key }}" required {% if key == 'beginner' %}checked{% endif %}>
+            <span class="justify-center">{{ label }}</span></label>
+          {% endfor %}
+        </div>
+      </fieldset>
+    </section>
+
+    <!-- 4. Хуваарь -->
+    <section class="ob-step space-y-5 hidden" data-step="3">
+      <div>
+        <h1 class="font-display text-[26px] leading-tight font-semibold">Хуваарь ба багаж</h1>
+      </div>
+      <div>
+        <label class="label" for="days">Долоо хоногт хэдэн өдөр?</label>
+        <div class="flex items-center gap-4">
+          <input id="days" name="days_per_week" type="range" min="2" max="6" value="3" class="flex-1 accent-[#2d5bff]">
+          <output id="days-out" class="num text-2xl font-semibold w-8 text-right">3</output>
+        </div>
+      </div>
+      <fieldset class="space-y-2.5">
+        <legend class="label">Юу ашиглаж чадах вэ?</legend>
+        {% for key, icon in [('none','home'),('dumbbell','fitness_center'),('gym','apartment')] %}
+        <label class="choice relative block"><input type="radio" name="equipment" value="{{ key }}" required {% if key == 'none' %}checked{% endif %}>
+          <span><span class="msr">{{ icon }}</span>{{ EQUIPMENT[key] }}</span></label>
+        {% endfor %}
+      </fieldset>
+    </section>
+
+    <p id="ob-error" class="text-sm text-pulse mt-4 min-h-[1.25rem]" role="alert"></p>
+
+    <div class="mt-auto pt-6 flex gap-3">
+      <button type="button" id="ob-back" class="btn btn-ghost w-28 invisible">Буцах</button>
+      <button type="button" id="ob-next" class="btn btn-primary flex-1">Үргэлжлүүлэх</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const steps = [...document.querySelectorAll(".ob-step")];
+  const bars = [...document.querySelectorAll(".ob-bar")];
+  const next = document.getElementById("ob-next");
+  const back = document.getElementById("ob-back");
+  const err = document.getElementById("ob-error");
+  const form = document.getElementById("ob-form");
+  let cur = 0;
+
+  document.getElementById("days").addEventListener("input", (e) => (document.getElementById("days-out").textContent = e.target.value));
+
+  function show(i) {
+    steps.forEach((s, k) => s.classList.toggle("hidden", k !== i));
+    bars.forEach((b, k) => (b.style.background = k <= i ? "var(--track)" : ""));
+    back.classList.toggle("invisible", i === 0);
+    next.textContent = i === steps.length - 1 ? "Төлөвлөгөө гаргах" : "Үргэлжлүүлэх";
+    err.textContent = "";
+    const first = steps[i].querySelector("input");
+    if (first && first.type !== "radio") first.focus();
+  }
+
+  function valid(i) {
+    const inputs = [...steps[i].querySelectorAll("input")];
+    for (const inp of inputs) {
+      if (inp.type === "radio") {
+        if (inp.required && !form.querySelector(`input[name="${inp.name}"]:checked`)) { err.textContent = "Бүх сонголтыг хийнэ үү."; return false; }
+      } else if (!inp.checkValidity()) {
+        err.textContent = `${inp.labels[0]?.textContent || "Утга"}: зөв утга оруулна уу.`; inp.focus(); return false;
+      }
+    }
+    return true;
+  }
+
+  next.addEventListener("click", () => {
+    if (!valid(cur)) return;
+    if (cur < steps.length - 1) { show(++cur); return; }
+    next.disabled = true; next.textContent = "Төлөвлөгөө бэлдэж байна…";
+    form.submit();
+  });
+  back.addEventListener("click", () => cur > 0 && show(--cur));
+  form.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); next.click(); } });
+  show(0);
+</script>
+{% endblock %}

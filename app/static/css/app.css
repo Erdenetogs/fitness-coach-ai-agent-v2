@@ -1,0 +1,88 @@
+/* FitCoach дизайн токенууд — Figma дахь "FitCoach Design System"-тэй ижил утгатай */
+:root {
+  --ink: #16213a;       /* Үндсэн текст, харанхуй гадаргуу */
+  --ink-2: #5b6680;     /* Хоёрдогч текст */
+  --paper: #eef1f6;     /* Дэвсгэр */
+  --surface: #ffffff;   /* Карт */
+  --line: #dde2ec;      /* Хүрээ */
+  --track: #2d5bff;     /* Үндсэн үйлдэл (товч, линк) */
+  --track-soft: #e4eaff;
+  --pulse: #ff6b4a;     /* Өнөөдөр, анхаарал */
+  --mint: #17a673;      /* Дууссан */
+  --mint-soft: #ddf4ea;
+}
+
+html { -webkit-tap-highlight-color: transparent; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Golos Text", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.font-display { font-family: "Unbounded", "Golos Text", sans-serif; letter-spacing: -0.01em; }
+.num { font-family: "Unbounded", sans-serif; font-variant-numeric: tabular-nums; }
+
+.msr { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; line-height: 1;
+  display: inline-block; white-space: nowrap; direction: ltr; -webkit-font-smoothing: antialiased;
+  font-variation-settings: "FILL" 0, "wght" 450, "GRAD" 0, "opsz" 24; user-select: none; }
+.msr.fill { font-variation-settings: "FILL" 1, "wght" 500, "GRAD" 0, "opsz" 24; }
+
+/* Карт: 2 түвшин — том (хуудасны гол блок) ба жижиг (жагсаалтын мөр) */
+.card { background: var(--surface); border-radius: 22px; border: 1px solid var(--line); }
+.row { background: var(--surface); border-radius: 14px; border: 1px solid var(--line); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; font-weight: 600;
+  border-radius: 14px; padding: .8rem 1.1rem; transition: transform .12s ease, background-color .12s ease; }
+.btn:active { transform: scale(.98); }
+.btn-primary { background: var(--track); color: #fff; }
+.btn-primary:hover { background: #1f48e6; }
+.btn-ghost { background: var(--track-soft); color: var(--track); }
+.btn-dark { background: var(--ink); color: #fff; }
+
+.field { width: 100%; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px;
+  padding: .7rem .85rem; font-size: 16px; color: var(--ink); }
+.field:focus { outline: none; border-color: var(--track); box-shadow: 0 0 0 3px var(--track-soft); }
+.label { font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: .35rem; display: block; }
+
+/* Сонголтын товч (radio-г картан хэлбэртэй) */
+.choice input { position: absolute; opacity: 0; pointer-events: none; }
+.choice > span { display: flex; align-items: center; gap: .6rem; border: 1.5px solid var(--line); background: var(--surface);
+  border-radius: 14px; padding: .8rem .9rem; cursor: pointer; font-weight: 500; }
+.choice input:checked + span { border-color: var(--track); background: var(--track-soft); color: var(--track); }
+.choice input:focus-visible + span { box-shadow: 0 0 0 3px var(--track-soft); }
+
+:focus-visible { outline: 2.5px solid var(--track); outline-offset: 2px; }
+
+/* Доод цэс */
+.tabbar a { color: #8a93a8; }
+.tabbar a[aria-current="page"] { color: var(--ink); }
+.tabbar a[aria-current="page"] .msr { font-variation-settings: "FILL" 1, "wght" 600, "GRAD" 0, "opsz" 24; }
+
+/* Агентын алхам — агент юу хийснийг харуулах жижиг мөрүүд */
+.step { display: flex; align-items: center; gap: .45rem; font-size: 12.5px; color: var(--ink-2); }
+.step .msr { font-size: 16px; color: var(--track); }
+
+/* Дасгалын checkbox */
+.tick { appearance: none; width: 28px; height: 28px; border-radius: 9px; border: 2px solid var(--line); background: #fff;
+  display: grid; place-items: center; cursor: pointer; flex: none; transition: background .15s ease, border-color .15s ease; }
+.tick:checked { background: var(--mint); border-color: var(--mint); }
+.tick:checked::after { content: ""; width: 7px; height: 13px; border: solid #fff; border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) translate(-1px, -1px); }
+.done-row { opacity: .6; }
+.done-row .ex-name { text-decoration: line-through; text-decoration-color: var(--mint); }
+
+/* Өнөөдрийн цагираг — нүүрний гол элемент */
+.ring-track { stroke: rgba(255,255,255,.14); }
+.ring-bar { stroke: var(--pulse); transition: stroke-dashoffset .6s cubic-bezier(.3,.7,.2,1); }
+
+/* Чатын хөөс */
+.bubble-user { background: var(--ink); color: #fff; border-radius: 18px 18px 6px 18px; }
+.bubble-ai { background: var(--surface); border: 1px solid var(--line); border-radius: 18px 18px 18px 6px; }
+.typing span { width: 6px; height: 6px; border-radius: 9px; background: var(--ink-2); display: inline-block; animation: blink 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
