@@ -85,21 +85,24 @@
   });
 
   function renderResult(d) {
-    const chips = d.ingredients.map((i) => `<span class="text-[13px] bg-mint-soft text-[#0e7a53] rounded-full px-2.5 py-1">${escapeHtml(i)}</span>`).join("");
-    const cards = d.recipes.map((r, i) => `
+    // AI-ийн хариуг шууд HTML-д хийхгүй: текстийг escape, тоог Number() болгоно
+    const list = (x) => (Array.isArray(x) ? x : []);
+    const num = (x) => (Number.isFinite(Number(x)) ? Number(x) : "–");
+    const chips = list(d.ingredients).map((i) => `<span class="text-[13px] bg-mint-soft text-[#0e7a53] rounded-full px-2.5 py-1">${escapeHtml(i)}</span>`).join("");
+    const cards = list(d.recipes).map((r, i) => `
       <article class="card p-4">
         <div class="flex items-start justify-between gap-3">
           <h3 class="font-display font-semibold text-[17px] leading-snug">${escapeHtml(r.title)}</h3>
           <button data-save="${i}" class="btn btn-ghost py-1.5 px-2.5 text-sm flex-none" aria-label="Жорыг хадгалах (+15 XP)" title="Хадгалах · +15 XP"><span class="msr text-[20px]">bookmark_add</span></button>
         </div>
         <div class="flex gap-4 mt-2 text-[13px] text-ink-2">
-          <span><b class="num text-ink">${r.kcal}</b> ккал</span><span><b class="num text-ink">${r.protein_g}</b> г уураг</span><span><b class="num text-ink">${r.time_min}</b> мин</span>
+          <span><b class="num text-ink">${num(r.kcal)}</b> ккал</span><span><b class="num text-ink">${num(r.protein_g)}</b> г уураг</span><span><b class="num text-ink">${num(r.time_min)}</b> мин</span>
         </div>
         <p class="text-[13.5px] mt-2">${escapeHtml(r.why || "")}</p>
-        ${r.extra && r.extra.length ? `<p class="text-[13px] text-ink-2 mt-1">Нэмж авах: ${r.extra.map(escapeHtml).join(", ")}</p>` : ""}
+        ${list(r.extra).length ? `<p class="text-[13px] text-ink-2 mt-1">Нэмж авах: ${list(r.extra).map(escapeHtml).join(", ")}</p>` : ""}
         <details class="mt-3">
           <summary class="cursor-pointer text-track font-medium text-sm">Хийх арга</summary>
-          <ol class="list-decimal pl-5 mt-2 space-y-1 text-[14px]">${r.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
+          <ol class="list-decimal pl-5 mt-2 space-y-1 text-[14px]">${list(r.steps).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
         </details>
       </article>`).join("");
     return `
