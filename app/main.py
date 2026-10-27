@@ -272,6 +272,12 @@ def api_xp(request: Request):
     return xp.status(user["id"])
 
 
+@app.get("/healthz")
+def healthz():
+    """Render (deploy) сервер ажиллаж байгааг шалгахад ашиглана."""
+    return {"ok": True}
+
+
 @app.get("/api/status")
 def api_status():
     return {"ai_live": llm.is_live(), "model": llm.MODEL}

@@ -15,6 +15,8 @@ uvicorn app.main:app --reload
 ```
 
 - Сайт: http://127.0.0.1:8000
+- Тест: `pip install -r requirements-dev.txt` → `python -m unittest -v` (PR бүрт GitHub Actions автоматаар ажиллуулна)
+- Сервер байршуулах: [DEPLOY.md](DEPLOY.md)
 - API туршилт: http://127.0.0.1:8000/docs
 
 `.env` дотор `ANTHROPIC_API_KEY` байхгүй бол агент **демо горим**-оор ажиллана: бодит хэрэгслүүдийг дуудаж өгөгдлийн санг өөрчилдөг ч хариуг энгийн дүрмээр гаргана. Түлхүүр тавимагц Claude жинхэнэ агент болж ажиллана.
