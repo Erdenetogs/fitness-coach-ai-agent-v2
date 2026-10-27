@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fitness Coach AI Agent</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Crect width='36' height='36' rx='10' fill='%23C8F04A'/%3E%3Cpath d='M9 22 L15 13 L19 20 L26 10' stroke='%230F3D2E' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #0F3D2E;
+    --green-2: #1B5A43;
+    --lime: #C8F04A;
+    --soft: #EAF6C6;
+    --bg: #F3F6EF;
+    --card: #FFFFFF;
+    --ink: #12201A;
+    --muted: #4F6057;
+    --line: #DCE5D6;
+    --danger: #A3261B;
+    --radius: 20px;
+    --display: 'Bricolage Grotesque', system-ui, sans-serif;
+    --body: 'Instrument Sans', system-ui, sans-serif;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+  h1, h2, h3 { font-family: var(--display); margin: 0; line-height: 1.15; }
+  button, input, select, textarea { font: inherit; }
+  [hidden] { display: none !important; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* ---------- header ---------- */
+  .topbar { position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 24px; background: var(--card); border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 20px; }
+  .nav { display: flex; flex-wrap: wrap; gap: 6px; }
+  .nav button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: transparent; color: var(--green); font-weight: 600; cursor: pointer; }
+  .nav button[aria-current="page"] { background: var(--green); color: #fff; }
+  .nav button:focus-visible, .btn:focus-visible, .upload:focus-within { outline: 3px solid var(--lime); outline-offset: 2px; }
+  .mode { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--soft); color: var(--green); }
+  .mode.live { background: var(--lime); color: var(--ink); }
+
+  /* ---------- layout ---------- */
+  main { max-width: 1120px; margin: 0 auto; padding: 28px 24px 64px; display: flex; flex-direction: column; gap: 24px; }
+  .page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .page-head h1 { font-size: clamp(30px, 5vw, 44px); }
+  .page-head p { margin: 6px 0 0; color: var(--muted); font-size: 17px; }
+  .row { display: flex; flex-wrap: wrap; gap: 20px; }
+  .row > * { flex: 1 1 300px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; display: flex; flex-direction: column; gap: 14px; }
+  .card h2 { font-size: 22px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 14px; }
+
+  /* ---------- buttons & forms ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 22px; border-radius: 12px; border: 2px solid var(--green); background: var(--green); color: #fff; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .btn:hover { background: var(--green-2); border-color: var(--green-2); }
+  .btn.ghost { background: transparent; color: var(--green); }
+  .btn.ghost:hover { background: var(--soft); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-weight: 600; font-size: 14px; }
+  .field input, .field select, .field textarea, .text-input { min-height: 48px; padding: 10px 14px; border: 1.5px solid #8A9D8F; border-radius: 12px; background: #fff; color: var(--ink); }
+  .error { color: var(--danger); font-weight: 600; margin: 0; }
+
+  /* ---------- setup ---------- */
+  .setup { display: flex; flex-wrap: wrap; border-radius: 28px; overflow: hidden; background: var(--card); border: 1px solid var(--line); }
+  .setup-hero { flex: 1 1 380px; background: var(--green); color: #fff; padding: 40px; display: flex; flex-direction: column; gap: 18px; justify-content: center; }
+  .setup-hero h1 { font-size: clamp(34px, 5vw, 50px); }
+  .setup-hero p { color: #D5E4DA; font-size: 18px; margin: 0; }
+  .setup form { flex: 1 1 360px; padding: 40px; display: flex; flex-direction: column; gap: 18px; }
+
+  /* ---------- dashboard ---------- */
+  .hero { display: flex; flex-wrap: wrap; align-items: center; gap: 28px; padding: 28px; border-radius: 24px; background: var(--green); color: #fff; }
+  .hero-main { flex: 1 1 340px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .hero-main h1 { font-size: clamp(26px, 4vw, 36px); }
+  .badge { display: inline-block; padding: 5px 12px; border-radius: 999px; background: var(--lime); color: var(--ink); font-size: 14px; font-weight: 700; }
+  .xp-text { color: #D5E4DA; font-size: 15px; }
+  .bar { height: 12px; border-radius: 999px; background: rgba(255,255,255,.2); overflow: hidden; }
+  .bar > div { height: 100%; background: var(--lime); border-radius: 999px; transition: width .4s ease; }
+  .streak { display: flex; flex-direction: column; align-items: center; padding: 14px 26px; border-radius: 18px; background: rgba(255,255,255,.12); }
+  .streak strong { font-family: var(--display); font-size: 44px; line-height: 1; }
+  .streak span { color: #D5E4DA; font-size: 14px; }
+  .row.stats { gap: 12px; }
+  .row.stats > * { flex: 1 1 100px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+  .stat span { display: block; color: var(--muted); font-size: 14px; }
+  .stat strong { font-family: var(--display); font-size: 34px; }
+  .bubble { margin: 0; padding: 16px 18px; border-radius: 16px 16px 16px 4px; background: var(--soft); font-size: 16px; }
+
+  /* ---------- meals ---------- */
+  .upload { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 280px; padding: 24px; border: 2px dashed #8A9D8F; border-radius: 24px; background: #fff; text-align: center; cursor: pointer; overflow: hidden; }
+  .upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload img { max-width: 100%; max-height: 320px; border-radius: 14px; object-fit: contain; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 8px 14px; border-radius: 999px; background: var(--soft); font-size: 15px; font-weight: 500; }
+  .meals { display: flex; flex-wrap: wrap; gap: 20px; }
+  .meal { flex: 1 1 280px; }
+  .meal .tag { align-self: flex-start; padding: 4px 12px; border-radius: 999px; background: var(--lime); font-size: 13px; font-weight: 700; }
+  .meal details summary { cursor: pointer; font-weight: 600; color: var(--green); min-height: 32px; }
+  .meal ol { margin: 8px 0 0; padding-left: 20px; }
+  .meal .btn { margin-top: auto; }
+
+  /* ---------- workouts ---------- */
+  .sessions { display: flex; flex-wrap: wrap; gap: 20px; }
+  .session { flex: 1 1 300px; }
+  .session.next { border: 2px solid var(--green); }
+  .session.done { background: #F7FAF4; }
+  .session-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .status { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--bg); color: var(--muted); white-space: nowrap; }
+  .session.next .status { background: var(--lime); color: var(--ink); }
+  .session.done .status { background: var(--green); color: #fff; }
+  .ex { list-style: none; margin: 0; padding: 0; }
+  .ex li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .ex li span:last-child { color: var(--muted); text-align: right; }
+
+  /* ---------- coach chat ---------- */
+  .chat { display: flex; flex-direction: column; gap: 12px; max-height: 480px; overflow-y: auto; padding: 4px; }
+  .msg { max-width: 78%; padding: 12px 16px; border-radius: 16px; white-space: pre-wrap; }
+  .msg.coach { align-self: flex-start; background: var(--soft); border-bottom-left-radius: 4px; }
+  .msg.user { align-self: flex-end; background: var(--green); color: #fff; border-bottom-right-radius: 4px; }
+  .chat-form { display: flex; gap: 10px; flex-wrap: wrap; }
+  .chat-form input { flex: 1 1 240px; }
+
+  /* ---------- misc ---------- */
+  .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
+  .btn.ghost .spinner { border-color: rgba(15,61,46,.25); border-top-color: var(--green); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 14px 22px; border-radius: 14px; background: var(--ink); color: #fff; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,.2); z-index: 50; max-width: calc(100% - 32px); }
+  footer { max-width: 1120px; margin: 0 auto; padding: 0 24px 40px; display: flex; flex-wrap: wrap; gap: 12px; justify-content: space-between; color: var(--muted); font-size: 14px; }
+  footer button { background: none; border: 0; color: var(--muted); text-decoration: underline; cursor: pointer; min-height: 44px; }
+  @media (max-width: 600px) {
+    .topbar { padding: 10px 16px; }
+    main { padding: 20px 16px 48px; }
+    .setup-hero, .setup form { padding: 28px 22px; }
+    .msg { max-width: 92%; }
+    .stat { padding: 14px 16px; }
+    .stat strong { font-size: 26px; }
+    .hero { padding: 22px; gap: 18px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2s; } .bar > div { transition: none; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="32" height="32" viewBox="0 0 36 36" aria-hidden="true"><rect width="36" height="36" rx="10" fill="#C8F04A"/><path d="M9 22 L15 13 L19 20 L26 10" stroke="#0F3D2E" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    FitCoach AI
+    <span id="mode" class="mode" title="Demo mode uses sample answers">Demo mode</span>
+  </div>
+  <nav class="nav" id="nav" aria-label="Main" hidden>
+    <button type="button" data-view="dashboard">Dashboard</button>
+    <button type="button" data-view="meals">Meals</button>
+    <button type="button" data-view="workouts">Workouts</button>
+    <button type="button" data-view="coach">Coach</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ================= SETUP (first visit) ================= -->
+  <section id="view-setup" hidden>
+    <div class="setup">
+      <div class="setup-hero">
+        <div id="setup-avatar"></div>
+        <h1>Your coach grows when you do.</h1>
+        <p>Snap your fridge for meal ideas, follow a weekly workout plan, and level up your AI coach with every healthy day.</p>
+      </div>
+      <form id="setup-form" novalidate>
+        <div>
+          <h2 style="font-size:30px">Meet your coach</h2>
+          <p class="muted" style="margin:6px 0 0">Tell us a little about you. Everything stays on this device.</p>
+        </div>
+        <div class="field">
+          <label for="s-name">Your name</label>
+          <input id="s-name" name="name" autocomplete="given-name" maxlength="30" required placeholder="e.g. Erdenetugs">
+        </div>
+        <div class="field">
+          <label for="s-goal">Main goal</label>
+          <select id="s-goal" name="goal">
+            <option>Build muscle</option>
+            <option>Lose weight</option>
+            <option>Get stronger</option>
+            <option selected>Stay active and healthy</option>
+          </select>
+        </div>
+        <div class="row" style="gap:16px">
+          <div class="field">
+            <label for="s-level">Fitness level</label>
+            <select id="s-level" name="fitnessLevel">
+              <option selected>Beginner</option>
+              <option>Intermediate</option>
+              <option>Advanced</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="s-days">Workouts per week</label>
+            <select id="s-days" name="days">
+              <option>2</option><option selected>3</option><option>4</option><option>5</option><option>6</option>
+            </select>
+          </div>
+        </div>
+        <p id="setup-error" class="error" role="alert" hidden></p>
+        <button class="btn" type="submit">Start</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= DASHBOARD ================= -->
+  <section id="view-dashboard" hidden>
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div class="hero">
+        <div id="dash-avatar"></div>
+        <div class="hero-main">
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px">
+            <span class="badge" id="dash-level">Level 1</span>
+            <span class="xp-text" id="dash-xp">0 / 100 XP</span>
+          </div>
+          <h1 id="dash-title">Hi!</h1>
+          <div class="bar" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" id="dash-bar-wrap"><div id="dash-bar" style="width:0%"></div></div>
+        </div>
+        <div class="streak"><strong id="dash-streak">0</strong><span>day streak</span></div>
+      </div>
+
+      <div class="row stats">
+        <div class="stat"><span>Workouts this week</span><strong id="stat-workouts">0</strong></div>
+        <div class="stat"><span>Meals logged</span><strong id="stat-meals">0</strong></div>
+        <div class="stat"><span>Total XP</span><strong id="stat-xp">0</strong></div>
+      </div>
+
+      <div class="row">
+        <div class="card">
+          <h2>Today's workout</h2>
+          <div id="dash-today"></div>
+        </div>
+        <div class="card">
+          <h2>Message from your coach</h2>
+          <p class="bubble" id="dash-coach"></p>
+          <button class="btn ghost" type="button" data-go="meals" style="margin-top:auto">Get meal ideas from a photo</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= MEALS ================= -->
+  <section id="view-meals" hidden>
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div class="page-head">
+        <div>
+          <h1>What's in your fridge?</h1>
+          <p>Upload a photo and your coach suggests meals that fit your goal.</p>
+        </div>
+      </div>
+      <div class="row">
+        <label class="upload" for="photo">
+          <input id="photo" type="file" accept="image/*" capture="environment">
+          <img id="photo-preview" alt="Your fridge photo" hidden>
+          <span id="photo-empty">
+            <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"><rect x="6" y="12" width="44" height="34" rx="8" fill="none" stroke="#0F3D2E" stroke-width="3"/><circle cx="28" cy="29" r="9" fill="none" stroke="#0F3D2E" stroke-width="3"/><path d="M20 12 L23 7 H33 L36 12" fill="none" stroke="#0F3D2E" stroke-width="3" stroke-linejoin="round"/></svg>
+            <strong style="display:block;font-size:19px">Take or choose a photo</strong>
+            <span class="muted small">JPG or PNG, up to 5 MB</span>
+          </span>
+        </label>
+        <div class="card">
+          <h2>Ingredients I found</h2>
+          <div id="ingredients" class="chips"><span class="muted">Upload a photo and press "Find meals".</span></div>
+          <p id="food-note" class="bubble" hidden></p>
+          <p id="food-error" class="error" role="alert" hidden></p>
+          <button id="find-meals" class="btn" type="button" disabled style="margin-top:auto">Find meals</button>
+        </div>
+      </div>
+      <div>
+        <h2 style="font-size:28px;margin-bottom:16px" id="meals-title" hidden>Meals you can make now</h2>
+        <div id="meals" class="meals"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= WORKOUTS ================= -->
+  <section id="view-workouts" hidden>
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div class="page-head">
+        <div>
+          <h1>This week's plan</h1>
+          <p id="plan-sub">Your coach builds a plan from your goal.</p>
+        </div>
+        <button id="make-plan" class="btn" type="button">Make my plan</button>
+      </div>
+      <p id="plan-summary" class="bubble" hidden></p>
+      <p id="plan-error" class="error" role="alert" hidden></p>
+      <div id="sessions" class="sessions"></div>
+    </div>
+  </section>
+
+  <!-- ================= COACH CHAT ================= -->
+  <section id="view-coach" hidden>
+    <div style="display:flex;flex-direction:column;gap:24px">
+      <div class="page-head">
+        <div>
+          <h1>Talk to your coach</h1>
+          <p>Ask about workouts, food or motivation. First chat each day: +5 XP.</p>
+        </div>
+      </div>
+      <div class="card">
+        <div id="chat" class="chat" aria-live="polite"></div>
+        <form id="chat-form" class="chat-form">
+          <label for="chat-input" class="sr-only">Message</label>
+          <input id="chat-input" class="text-input" maxlength="600" placeholder="e.g. I only have 20 minutes today. What should I do?" autocomplete="off">
+          <button class="btn" type="submit" id="chat-send">Send</button>
+        </form>
+        <p id="chat-error" class="error" role="alert" hidden></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="footer" hidden>
+  <span>FitCoach AI · Capstone project · Not medical advice</span>
+  <button type="button" id="reset">Reset my data</button>
+</footer>
+
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+(() => {
+  'use strict';
+
+  /* =========================================================
+     State (saved in this browser with localStorage)
+     ========================================================= */
+  const KEY = 'fitcoach.v1';
+  const XP = { workout: 40, meal: 15, chat: 5 };
+  const defaults = () => ({
+    profile: null,          // {name, goal, fitnessLevel, days}
+    level: 1, xp: 0, totalXp: 0,
+    streak: 0, lastActive: null,
+    mealsLogged: 0, workoutsDone: 0,
+    plan: null,             // {summary, sessions:[...]}
+    week: null, done: {},   // sessions finished this week
+    chat: [], chatXpDay: null,
+    coachLine: null
+  });
+
+  let state = load();
+  let serverUp = false;     // index.html is served by the Spring Boot backend
+  let live = false;         // backend has a real API key
+
+  function load() {
+    try { return { ...defaults(), ...JSON.parse(localStorage.getItem(KEY) || '{}') }; }
+    catch { return defaults(); }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* private mode: keep in memory */ }
+  }
+
+  /* ---------- dates, streak, week ---------- */
+  function dayKey(d = new Date()) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function yesterdayKey() { const d = new Date(); d.setDate(d.getDate() - 1); return dayKey(d); }
+  function weekKey() { const d = new Date(); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return dayKey(d); }
+  function rollWeek() {
+    const w = weekKey();
+    if (state.week !== w) { state.week = w; state.done = {}; save(); }
+  }
+  function currentStreak() {
+    return (state.lastActive === dayKey() || state.lastActive === yesterdayKey()) ? state.streak : 0;
+  }
+  function markActive() {
+    const today = dayKey();
+    if (state.lastActive === today) return;
+    state.streak = state.lastActive === yesterdayKey() ? state.streak + 1 : 1;
+    state.lastActive = today;
+  }
+
+  /* ---------- XP & levels ---------- */
+  const need = (lvl) => 100 * lvl;   // XP needed to go from this level to the next
+  function stage(lvl) {
+    if (lvl >= 8) return 'Champion';
+    if (lvl >= 5) return 'Athlete';
+    if (lvl >= 3) return 'Sprout';
+    return 'Seedling';
+  }
+  function addXp(amount, reason) {
+    markActive();
+    state.xp += amount;
+    state.totalXp += amount;
+    let levelledUp = false;
+    while (state.xp >= need(state.level)) {
+      state.xp -= need(state.level);
+      state.level += 1;
+      levelledUp = true;
+    }
+    save();
+    toast(levelledUp
+      ? `Level up! Your coach is now level ${state.level} (${stage(state.level)}).`
+      : `+${amount} XP · ${reason}`);
+    renderDashboard();
+  }
+
+  /* =========================================================
+     Small helpers
+     ========================================================= */
+  const $ = (sel) => document.querySelector(sel);
+
+  // Builds elements with textContent only, so AI text can never inject HTML.
+  function el(tag, props = {}, ...kids) {
+    const node = document.createElement(tag);
+    for (const [k, v] of Object.entries(props)) {
+      if (v == null || v === false) continue;
+      if (k === 'class') node.className = v;
+      else if (k.startsWith('on')) node.addEventListener(k.slice(2).toLowerCase(), v);
+      else node.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat()) {
+      if (kid == null || kid === false) continue;
+      node.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+    }
+    return node;
+  }
+
+  let toastTimer;
+  function toast(text) {
+    const t = $('#toast');
+    t.textContent = text;
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+  }
+
+  function showError(sel, msg) { const e = $(sel); e.textContent = msg || ''; e.hidden = !msg; }
+
+  function busy(button, isBusy, label) {
+    if (isBusy) {
+      button.dataset.label = button.textContent;
+      button.disabled = true;
+      button.replaceChildren(el('span', { class: 'spinner', 'aria-hidden': 'true' }), label || 'Working...');
+    } else {
+      button.disabled = false;
+      button.textContent = button.dataset.label || label || '';
+    }
+  }
+
+  // The coach avatar: grows a leaf per level (up to 5) and gets a headband at level 5.
+  function avatar(size, level) {
+    const leaves = Math.min(5, Math.max(1, level));
+    let leafSvg = '';
+    for (let i = 0; i < leaves; i++) {
+      const angle = (i - (leaves - 1) / 2) * 22;
+      leafSvg += `<path transform="rotate(${angle} 100 34)" d="M100 34 C88 14 106 4 116 16 C112 28 106 32 100 34Z" fill="#7BD34E"/>`;
+    }
+    const band = level >= 5 ? '<rect x="36" y="64" width="128" height="14" rx="7" fill="#0F3D2E"/><rect x="36" y="64" width="128" height="14" rx="7" fill="none" stroke="#fff" stroke-width="2"/>' : '';
+    return `<svg width="${size}" height="${size}" viewBox="0 0 200 200" role="img" aria-label="Your AI coach, level ${level}">
+      ${leafSvg}
+      <circle cx="100" cy="108" r="76" fill="#C8F04A"/>
+      ${band}
+      <circle cx="74" cy="104" r="9" fill="#12201A"/><circle cx="126" cy="104" r="9" fill="#12201A"/>
+      <path d="M78 132 Q100 152 122 132" stroke="#12201A" stroke-width="7" fill="none" stroke-linecap="round"/>
+      <circle cx="58" cy="126" r="8" fill="#9BD62F"/><circle cx="142" cy="126" r="8" fill="#9BD62F"/>
+    </svg>`;
+  }
+
+  /* =========================================================
+     API calls (fall back to built-in demo answers)
+     ========================================================= */
+  async function checkServer() {
+    if (!location.protocol.startsWith('http')) return;   // opened as a file: demo mode
+    try {
+      const res = await fetch('/api/status');
+      if (res.ok) {
+        const s = await res.json();
+        serverUp = true;
+        live = !!s.live;
+      }
+    } catch { /* server not running: demo mode */ }
+    const badge = $('#mode');
+    badge.textContent = live ? 'AI connected' : 'Demo mode';
+    badge.classList.toggle('live', live);
+  }
+
+  async function api(path, options = {}) {
+    if (!serverUp) return demo(path, options);
+    const res = await fetch(path, options);
+    let data = null;
+    try { data = await res.json(); } catch { /* not JSON */ }
+    if (!res.ok) throw new Error((data && data.error) || `Server error (${res.status}).`);
+    return data;
+  }
+
+  function demo(path, options) {
+    const wait = (v) => new Promise((r) => setTimeout(() => r(v), 700));
+    if (path === '/api/food/analyze') {
+      return wait({
+        ingredients: ['chicken breast', 'spinach', 'eggs', 'rice', 'tomatoes', 'greek yogurt'],
+        note: 'Demo mode: sample data. Run the backend with an API key to analyse your real photo.',
+        meals: [
+          { name: 'Chicken and spinach rice bowl', calories: 520, protein_g: 42, minutes: 20, uses: ['chicken breast', 'spinach', 'rice', 'tomatoes'],
+            steps: ['Cook the rice.', 'Pan-fry sliced chicken for 6-7 minutes.', 'Wilt the spinach in the same pan.', 'Serve over rice with chopped tomatoes.'] },
+          { name: 'Spinach tomato omelette', calories: 340, protein_g: 24, minutes: 10, uses: ['eggs', 'spinach', 'tomatoes'],
+            steps: ['Beat 3 eggs with a pinch of salt.', 'Soften spinach and tomato in a pan.', 'Pour in the eggs and cook until set.', 'Serve with Greek yogurt.'] },
+          { name: 'Egg fried rice with spinach', calories: 460, protein_g: 22, minutes: 15, uses: ['rice', 'eggs', 'spinach'],
+            steps: ['Scramble 2 eggs and set aside.', 'Fry cold rice in a hot pan.', 'Add spinach, then the eggs.', 'Season and serve.'] }
+        ]
+      });
+    }
+    if (path === '/api/workout/plan') {
+      const body = JSON.parse(options.body || '{}');
+      const pool = [
+        ['Upper body', [['Push-ups', 3, '12'], ['Dumbbell row', 3, '10'], ['Shoulder press', 3, '10'], ['Plank', 3, '40 sec']]],
+        ['Legs', [['Squats', 4, '12'], ['Lunges', 3, '10 each leg'], ['Glute bridge', 3, '15'], ['Calf raises', 3, '20']]],
+        ['Core and cardio', [['Mountain climbers', 3, '30 sec'], ['Crunches', 3, '15'], ['Jumping jacks', 3, '45 sec'], ['Side plank', 2, '30 sec each side']]],
+        ['Full body', [['Burpees', 3, '10'], ['Goblet squat', 3, '12'], ['Push-ups', 3, '10'], ['Russian twists', 3, '20']]],
+        ['Mobility', [['Brisk walk', 1, '20 min'], ['Hip openers', 2, '10'], ['Cat-cow stretch', 2, '10'], ['Hamstring stretch', 2, '30 sec']]],
+        ['Upper body 2', [['Incline push-ups', 3, '12'], ['Tricep dips', 3, '10'], ['Superman hold', 3, '30 sec'], ['Plank', 3, '45 sec']]]
+      ];
+      const days = Number(body.daysPerWeek) || 3;
+      return wait({
+        summary: `Demo mode: a sample ${days}-day plan for "${body.goal}". Run the backend with an API key for a plan written by the AI coach.`,
+        sessions: Array.from({ length: days }, (_, i) => {
+          const [name, ex] = pool[i % pool.length];
+          return { name, minutes: 35, exercises: ex.map(([n, s, r]) => ({ name: n, sets: s, reps: r })) };
+        })
+      });
+    }
+    if (path === '/api/coach/chat') {
+      return wait({ reply: "I'm in demo mode, so I can't really read your message yet. Keep going with today's plan and log your workout to earn XP!" });
+    }
+    return Promise.reject(new Error('Unknown request.'));
+  }
+
+  /* =========================================================
+     Navigation
+     ========================================================= */
+  const VIEWS = ['setup', 'dashboard', 'meals', 'workouts', 'coach'];
+
+  function show(view) {
+    if (!state.profile) view = 'setup';
+    if (!VIEWS.includes(view)) view = 'dashboard';
+    for (const v of VIEWS) $('#view-' + v).hidden = v !== view;
+    $('#nav').hidden = view === 'setup';
+    $('#footer').hidden = view === 'setup';
+    document.querySelectorAll('#nav button').forEach((b) => {
+      if (b.dataset.view === view) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
+    if (view !== 'setup' && location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
+    if (view === 'dashboard') renderDashboard();
+    if (view === 'workouts') renderWorkouts();
+    if (view === 'coach') renderChat();
+    window.scrollTo(0, 0);
+  }
+
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-view], [data-go]');
+    if (target) show(target.dataset.view || target.dataset.go);
+  });
+  window.addEventListener('hashchange', () => show(location.hash.slice(1)));
+
+  /* =========================================================
+     Setup
+     ========================================================= */
+  $('#setup-avatar').innerHTML = avatar(120, 1);
+
+  $('#setup-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('#s-name').value.trim();
+    if (!name) { showError('#setup-error', 'Please enter your name.'); $('#s-name').focus(); return; }
+    showError('#setup-error', '');
+    state.profile = {
+      name,
+      goal: $('#s-goal').value,
+      fitnessLevel: $('#s-level').value,
+      days: Number($('#s-days').value)
+    };
+    state.coachLine = `Nice to meet you, ${name}! Start by making your workout plan, then send me a photo of your fridge.`;
+    save();
+    show('dashboard');
+  });
+
+  /* =========================================================
+     Dashboard
+     ========================================================= */
+  function renderDashboard() {
+    if (!state.profile) return;
+    rollWeek();
+    const pct = Math.round((state.xp / need(state.level)) * 100);
+    $('#dash-avatar').innerHTML = avatar(132, state.level);
+    $('#dash-level').textContent = `Level ${state.level} · ${stage(state.level)}`;
+    $('#dash-xp').textContent = `${state.xp} / ${need(state.level)} XP to level ${state.level + 1}`;
+    $('#dash-bar').style.width = pct + '%';
+    $('#dash-bar-wrap').setAttribute('aria-valuenow', String(pct));
+    $('#dash-streak').textContent = currentStreak();
+
+    const sessions = state.plan ? state.plan.sessions : [];
+    const doneCount = sessions.filter((_, i) => state.done[i]).length;
+    $('#stat-workouts').textContent = sessions.length ? `${doneCount} / ${sessions.length}` : '0';
+    $('#stat-meals').textContent = state.mealsLogged;
+    $('#stat-xp').textContent = state.totalXp;
+
+    const left = sessions.length - doneCount;
+    $('#dash-title').textContent = !sessions.length
+      ? `Hi ${state.profile.name}! Let's make your first plan.`
+      : left > 0
+        ? `${left} workout${left > 1 ? 's' : ''} left this week, ${state.profile.name}.`
+        : `Every workout done this week. Great job, ${state.profile.name}!`;
+
+    const today = $('#dash-today');
+    const next = sessions.findIndex((_, i) => !state.done[i]);
+    if (!sessions.length) {
+      today.replaceChildren(
+        el('p', { class: 'muted', style: 'margin:0' }, `Goal: ${state.profile.goal}, ${state.profile.days} workouts a week.`),
+        el('button', { class: 'btn', type: 'button', 'data-go': 'workouts' }, 'Make my plan')
+      );
+    } else if (next === -1) {
+      today.replaceChildren(el('p', { style: 'margin:0' }, 'All sessions finished this week. Rest well, a new week starts on Monday.'));
+    } else {
+      const s = sessions[next];
+      today.replaceChildren(
+        el('p', { style: 'margin:0;font-size:20px;font-weight:600' }, s.name),
+        el('p', { class: 'muted', style: 'margin:0' }, `${s.minutes || 30} min · ${s.exercises.length} exercise${s.exercises.length === 1 ? '' : 's'} · +${XP.workout} XP`),
+        el('button', { class: 'btn', type: 'button', 'data-go': 'workouts' }, 'Start workout')
+      );
+    }
+    $('#dash-coach').textContent = state.coachLine || 'Ready when you are!';
+  }
+
+  /* =========================================================
+     Meals: photo -> ingredients -> meal ideas
+     ========================================================= */
+  let photoBlob = null;
+
+  // Shrink big phone photos before upload (faster and cheaper for the AI).
+  function shrink(file, maxSide = 1280) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => { URL.revokeObjectURL(url); resolve(blob || file); }, 'image/jpeg', 0.85);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  $('#photo').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    showError('#food-error', '');
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { showError('#food-error', 'Please choose an image file.'); return; }
+    photoBlob = await shrink(file);
+    const preview = $('#photo-preview');
+    preview.src = URL.createObjectURL(photoBlob);
+    preview.hidden = false;
+    $('#photo-empty').hidden = true;
+    $('#find-meals').disabled = false;
+  });
+
+  $('#find-meals').addEventListener('click', async () => {
+    if (!photoBlob) return;
+    const btn = $('#find-meals');
+    showError('#food-error', '');
+    busy(btn, true, 'Looking at your photo...');
+    try {
+      const form = new FormData();
+      form.append('image', photoBlob, 'fridge.jpg');
+      form.append('goal', state.profile.goal);
+      const data = await api('/api/food/analyze', { method: 'POST', body: form });
+      renderFood(data);
+    } catch (err) {
+      showError('#food-error', err.message);
+    } finally {
+      busy(btn, false, 'Find meals');
+    }
+  });
+
+  function renderFood(data) {
+    const ingredients = Array.isArray(data.ingredients) ? data.ingredients : [];
+    const meals = Array.isArray(data.meals) ? data.meals : [];
+    $('#ingredients').replaceChildren(...(ingredients.length
+      ? ingredients.map((i) => el('span', { class: 'chip' }, i))
+      : [el('span', { class: 'muted' }, 'No food found in this photo.')]));
+    const note = $('#food-note');
+    note.textContent = data.note || '';
+    note.hidden = !data.note;
+    if (data.note) { state.coachLine = data.note; save(); }
+
+    $('#meals-title').hidden = meals.length === 0;
+    $('#meals').replaceChildren(...meals.map((m, i) => {
+      const cookBtn = el('button', { class: 'btn', type: 'button' }, `I cooked this (+${XP.meal} XP)`);
+      cookBtn.addEventListener('click', () => {
+        cookBtn.disabled = true;
+        cookBtn.textContent = 'Logged';
+        state.mealsLogged += 1;
+        state.coachLine = `Nice choice: ${m.name}. Logged it for you.`;
+        addXp(XP.meal, 'meal logged');
+      });
+      const facts = [m.calories && `${m.calories} kcal`, m.protein_g && `${m.protein_g} g protein`, m.minutes && `${m.minutes} min`].filter(Boolean).join(' · ');
+      return el('article', { class: 'card meal' },
+        i === 0 ? el('span', { class: 'tag' }, 'Best match') : null,
+        el('h3', { style: 'font-size:21px' }, m.name || 'Meal idea'),
+        facts ? el('p', { class: 'muted', style: 'margin:0' }, facts) : null,
+        Array.isArray(m.uses) && m.uses.length ? el('p', { style: 'margin:0' }, 'Uses: ' + m.uses.join(', ')) : null,
+        Array.isArray(m.steps) && m.steps.length
+          ? el('details', {}, el('summary', {}, 'How to make it'), el('ol', {}, m.steps.map((s) => el('li', {}, s))))
+          : null,
+        cookBtn
+      );
+    }));
+  }
+
+  /* =========================================================
+     Workouts: AI plan + mark sessions done
+     ========================================================= */
+  $('#make-plan').addEventListener('click', async () => {
+    if (state.plan && !confirm('Make a new plan? This week\'s progress on the old plan will be cleared.')) return;
+    const btn = $('#make-plan');
+    showError('#plan-error', '');
+    busy(btn, true, 'Your coach is planning...');
+    try {
+      const p = state.profile;
+      const data = await api('/api/workout/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: p.goal, daysPerWeek: p.days, fitnessLevel: p.fitnessLevel })
+      });
+      if (!data || !Array.isArray(data.sessions) || !data.sessions.length) throw new Error('The coach returned an empty plan. Try again.');
+      state.plan = {
+        summary: data.summary || '',
+        sessions: data.sessions.map((s) => ({
+          name: s.name || 'Workout',
+          minutes: Number(s.minutes) || 30,
+          exercises: (Array.isArray(s.exercises) ? s.exercises : []).map((x) => ({ name: x.name || '', sets: x.sets || '', reps: x.reps || '' }))
+        }))
+      };
+      state.done = {};
+      state.week = weekKey();
+      state.coachLine = 'Your new plan is ready. Start with the first session when you can!';
+      save();
+      renderWorkouts();
+    } catch (err) {
+      showError('#plan-error', err.message);
+    } finally {
+      busy(btn, false, state.plan ? 'Make a new plan' : 'Make my plan');
+    }
+  });
+
+  function renderWorkouts() {
+    if (!state.profile) return;
+    rollWeek();
+    const p = state.profile;
+    $('#plan-sub').textContent = `Goal: ${p.goal} · ${p.fitnessLevel} · ${p.days} workouts a week`;
+    $('#make-plan').textContent = state.plan ? 'Make a new plan' : 'Make my plan';
+    const summary = $('#plan-summary');
+    const sessions = state.plan ? state.plan.sessions : [];
+    summary.textContent = state.plan ? state.plan.summary : '';
+    summary.hidden = !(state.plan && state.plan.summary);
+
+    if (!sessions.length) {
+      $('#sessions').replaceChildren(el('div', { class: 'card' },
+        el('h2', {}, 'No plan yet'),
+        el('p', { class: 'muted', style: 'margin:0' }, 'Press "Make my plan" and your AI coach will build a week of workouts for you.')));
+      return;
+    }
+    const next = sessions.findIndex((_, i) => !state.done[i]);
+    $('#sessions').replaceChildren(...sessions.map((s, i) => {
+      const done = !!state.done[i];
+      const isNext = i === next;
+      const btn = el('button', { class: done ? 'btn ghost' : 'btn', type: 'button', disabled: done }, done ? 'Done' : `Mark as done (+${XP.workout} XP)`);
+      btn.addEventListener('click', () => {
+        state.done[i] = true;
+        state.workoutsDone += 1;
+        state.coachLine = `Great work finishing "${s.name}"! Remember to eat some protein and drink water.`;
+        addXp(XP.workout, 'workout finished');
+        renderWorkouts();
+      });
+      return el('article', { class: 'card session' + (done ? ' done' : '') + (isNext ? ' next' : '') },
+        el('div', { class: 'session-head' },
+          el('div', {},
+            el('p', { class: 'muted small', style: 'margin:0' }, `Session ${i + 1} · ${s.minutes} min`),
+            el('h3', { style: 'font-size:22px' }, s.name)),
+          el('span', { class: 'status' }, done ? 'Done' : isNext ? 'Next' : 'Planned')),
+        el('ul', { class: 'ex' }, s.exercises.map((x) =>
+          el('li', {}, el('span', {}, x.name), el('span', {}, [x.sets && `${x.sets} sets`, x.reps && `× ${x.reps}`].filter(Boolean).join(' '))))),
+        btn
+      );
+    }));
+  }
+
+  /* =========================================================
+     Coach chat
+     ========================================================= */
+  function renderChat() {
+    if (!state.chat.length) {
+      state.chat.push({ role: 'coach', text: `Hi ${state.profile.name}! I'm your FitCoach. Ask me anything about workouts, food or staying motivated.` });
+      save();
+    }
+    const box = $('#chat');
+    box.replaceChildren(...state.chat.map((m) => el('div', { class: 'msg ' + m.role }, m.text)));
+    box.scrollTop = box.scrollHeight;
+  }
+
+  $('#chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = $('#chat-input');
+    const text = input.value.trim();
+    if (!text) return;
+    showError('#chat-error', '');
+    state.chat.push({ role: 'user', text });
+    input.value = '';
+    renderChat();
+    const btn = $('#chat-send');
+    busy(btn, true, '...');
+    try {
+      const data = await api('/api/coach/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, goal: state.profile.goal, level: state.level, streak: currentStreak() })
+      });
+      state.chat.push({ role: 'coach', text: data.reply });
+      state.chat = state.chat.slice(-40);
+      state.coachLine = data.reply;
+      save();
+      renderChat();
+      if (state.chatXpDay !== dayKey()) {
+        state.chatXpDay = dayKey();
+        addXp(XP.chat, 'daily check-in');
+      }
+    } catch (err) {
+      showError('#chat-error', err.message);
+    } finally {
+      busy(btn, false, 'Send');
+      input.focus();
+    }
+  });
+
+  /* =========================================================
+     Reset & start
+     ========================================================= */
+  $('#reset').addEventListener('click', () => {
+    if (!confirm('Delete your profile, plan, XP and chat from this device?')) return;
+    state = defaults();
+    try { localStorage.removeItem(KEY); } catch { /* ignore */ }
+    show('setup');
+  });
+
+  checkServer().finally(() => show(location.hash.slice(1) || 'dashboard'));
+})();
+</script>
+</body>
+</html>
