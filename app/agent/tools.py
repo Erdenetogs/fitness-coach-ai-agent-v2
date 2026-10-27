@@ -122,27 +122,44 @@ def run_tool(uid: int, name: str, args: dict) -> dict:
     if name == "get_workout_plan":
         return {"today": planner.today_name(), "plan": db.get_plan(uid)}
     if name == "get_workout_history":
-        return {"history": db.get_workout_history(uid, int(args.get("days") or 14))}
+        try:
+            days = int(args.get("days") or 14)
+        except (TypeError, ValueError):
+            days = 14
+        return {"history": db.get_workout_history(uid, max(1, min(90, days)))}
     if name == "get_progress":
         weights = db.get_weights(uid)
         change = round(weights[-1]["kg"] - weights[0]["kg"], 1) if len(weights) > 1 else 0
         return {"weights": weights, "change_kg": change}
+    # Доорх хэрэгслүүд өгөгдөл өөрчилдөг тул AI-ийн өгсөн утгыг шалгаж байж хадгална.
+    # Алдаатай бол {"error": ...} буцаавал Claude өөрөө засаад дахин дуудна.
     if name == "update_workout_day":
+        day = args.get("day")
+        if day not in planner.WEEKDAYS:
+            return {"error": f"day нь эдгээрийн нэг байх ёстой: {', '.join(planner.WEEKDAYS)}"}
+        exercises = [e for e in (args.get("exercises") or []) if isinstance(e, dict) and e.get("name")][:10]
         plan = db.get_plan(uid)
-        day = args["day"]
-        exercises = args.get("exercises") or []
         plan[day] = {
             "focus": "custom" if exercises else "rest",
-            "title": args.get("title") or ("Амрах өдөр" if not exercises else "Шинэчилсэн дасгал"),
+            "title": str(args.get("title") or ("Амрах өдөр" if not exercises else "Шинэчилсэн дасгал"))[:40],
             "exercises": [{**{"icon": "fitness_center"}, **e} for e in exercises],
         }
         db.save_plan(uid, plan)
         return {"ok": True, "day": day, "plan_day": plan[day]}
     if name == "log_weight":
-        db.add_weight(uid, float(args["kg"]))
-        return {"ok": True, "kg": args["kg"]}
+        try:
+            kg = round(float(args.get("kg")), 1)
+        except (TypeError, ValueError):
+            return {"error": "kg нь тоо байх ёстой"}
+        if not 25 <= kg <= 300:
+            return {"error": "Жин 25–300 кг хооронд байх ёстой. Хэрэглэгчээс дахин асуу."}
+        db.add_weight(uid, kg)
+        return {"ok": True, "kg": kg}
     if name == "save_memory":
-        db.add_memory(uid, args["fact"])
+        fact = str(args.get("fact") or "").strip()[:200]
+        if not fact:
+            return {"error": "fact хоосон байна"}
+        db.add_memory(uid, fact)
         return {"ok": True}
     return {"error": f"Тодорхойгүй хэрэгсэл: {name}"}
 
