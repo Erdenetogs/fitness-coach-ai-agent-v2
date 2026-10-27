@@ -67,6 +67,9 @@ def conn():
 
 
 def init_db():
+    folder = os.path.dirname(DB_PATH)
+    if folder:
+        os.makedirs(folder, exist_ok=True)
     with conn() as c:
         c.executescript(SCHEMA)
 
