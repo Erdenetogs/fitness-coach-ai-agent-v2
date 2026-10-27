@@ -30,7 +30,8 @@ def new_client(**overrides) -> tuple[TestClient, int]:
     c = TestClient(app)
     r = c.post("/onboarding", data={**PROFILE, **overrides}, follow_redirects=False)
     assert r.status_code == 303
-    return c, int(r.cookies.get("fitcoach_uid") or c.cookies.get("fitcoach_uid"))
+    token = r.cookies.get("fitcoach_token") or c.cookies.get("fitcoach_token")
+    return c, db.get_user_by_token(token)["id"]
 
 
 class PagesTest(unittest.TestCase):
@@ -205,6 +206,49 @@ class XpTest(unittest.TestCase):
         con.commit()
         con.close()
         self.assertEqual(xp.streak(uid), 3)
+
+
+class SecurityAndValidationTest(unittest.TestCase):
+    def test_cookie_is_random_token_not_user_id(self):
+        c, uid = new_client()
+        token = c.cookies.get("fitcoach_token")
+        self.assertNotEqual(token, str(uid))
+        self.assertGreater(len(token), 30)
+        # Хэрэглэгчийн дугаарыг cookie-д тавиад бусдын мэдээлэлд нэвтэрч болохгүй
+        forged = TestClient(app)
+        forged.cookies.set("fitcoach_token", str(uid))
+        self.assertEqual(forged.get("/", follow_redirects=False).status_code, 303)
+        self.assertEqual(forged.get("/api/progress").status_code, 401)
+
+    def test_onboarding_rejects_bad_values(self):
+        for bad in [dict(goal="hack"), dict(age=5), dict(weight_kg=999), dict(days_per_week=9), dict(name="  ")]:
+            with self.subTest(bad=bad):
+                r = TestClient(app).post("/onboarding", data={**PROFILE, **bad}, follow_redirects=False)
+                self.assertEqual(r.status_code, 400)
+
+    def test_recipe_needs_title(self):
+        c, _ = new_client()
+        self.assertEqual(c.post("/api/recipes", json={"recipe": {}}).status_code, 400)
+
+    def test_agent_tools_validate_input(self):
+        from app.agent.tools import run_tool
+        _, uid = new_client()
+        self.assertIn("error", run_tool(uid, "update_workout_day", {"day": "Friday", "exercises": [], "reason": "x"}))
+        self.assertIn("error", run_tool(uid, "log_weight", {"kg": 999}))
+        self.assertIn("error", run_tool(uid, "save_memory", {"fact": "  "}))
+        self.assertEqual(run_tool(uid, "log_weight", {"kg": 61.44})["kg"], 61.4)
+
+    def test_demo_does_not_log_days_as_weight(self):
+        from app.agent import coach
+        _, uid = new_client()
+        before = db.get_weights(uid)
+        coach.chat(uid, "Жин хасахад 30 хоног хангалттай юу?")
+        self.assertEqual(db.get_weights(uid), before)
+
+    def test_history_uses_local_date(self):
+        _, uid = new_client()
+        db.set_exercise_done(uid, "Суулт", True)
+        self.assertEqual(db.get_workout_history(uid, 1)[-1]["day"], date.today().isoformat())
 
 
 if __name__ == "__main__":
