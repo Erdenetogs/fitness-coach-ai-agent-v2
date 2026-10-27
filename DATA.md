@@ -44,6 +44,16 @@
 ## DELETE /api/memory/{id}
 → `{"ok": true}`
 
+## XP (`xp`)
+`/api/chat`, `/api/recipes`, `/api/workout/done` хариунд `xp` талбар нэмэгдэнэ. XP өгөөгүй бол `null`.
+```json
+{"gained": 40, "reason": "өнөөдрийн дасгал дууслаа", "leveled_up": false,
+ "level": 2, "xp": 15, "need": 200, "total": 115, "stage": "Үр", "pct": 8, "streak": 3}
+```
+
+## GET /api/xp
+Дээрхтэй ижил, `gained/reason/leveled_up`-гүй.
+
 ## GET /api/status
 `{"ai_live": true, "model": "claude-sonnet-5-5"}`
 

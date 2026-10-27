@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 
-from app import db, planner
+from app import db, planner, xp
 from app.agent import coach, fridge, llm
 
 BASE = Path(__file__).parent
@@ -37,7 +37,9 @@ def current_user(request: Request):
 
 def page(request: Request, name: str, active: str, **ctx):
     user = ctx.get("user") or current_user(request)
-    return templates.TemplateResponse(request, name, {"active": active, "user": user, "ai_live": llm.is_live(), **ctx})
+    coach_status = xp.status(user["id"]) if user else None
+    return templates.TemplateResponse(request, name, {"active": active, "user": user, "ai_live": llm.is_live(),
+                                                      "coach": coach_status, **ctx})
 
 
 def need_user(request: Request):
@@ -189,7 +191,8 @@ def api_chat(body: ChatIn, request: Request):
     msg = body.message.strip()[:1000]
     if not msg:
         return JSONResponse({"error": "Мессеж хоосон байна"}, status_code=400)
-    return coach.chat(user["id"], msg)
+    result = coach.chat(user["id"], msg)
+    return {**result, "xp": xp.award(user["id"], "chat", db.today())}
 
 
 @app.post("/api/fridge")
@@ -216,7 +219,8 @@ def api_save_recipe(body: RecipeIn, request: Request):
     if err:
         return err
     db.save_recipe(user["id"], body.recipe)
-    return {"ok": True}
+    title = str(body.recipe.get("title", ""))[:80]
+    return {"ok": True, "xp": xp.award(user["id"], "meal", f"{db.today()}:{title}")}
 
 
 @app.post("/api/workout/done")
@@ -225,7 +229,11 @@ def api_done(body: DoneIn, request: Request):
     if err:
         return err
     db.set_exercise_done(user["id"], body.exercise, body.done)
-    return {"ok": True, "done_today": sorted(db.get_done_today(user["id"]))}
+    done = db.get_done_today(user["id"])
+    today_plan = db.get_plan(user["id"]).get(planner.today_name(), {})
+    names = {e["name"] for e in today_plan.get("exercises", [])}
+    gained = xp.award(user["id"], "workout", db.today()) if names and names <= done else None
+    return {"ok": True, "done_today": sorted(done), "xp": gained}
 
 
 @app.post("/api/weight")
@@ -254,6 +262,14 @@ def api_delete_memory(mid: int, request: Request):
         return err
     db.delete_memory(user["id"], mid)
     return {"ok": True}
+
+
+@app.get("/api/xp")
+def api_xp(request: Request):
+    user, err = _api_user(request)
+    if err:
+        return err
+    return xp.status(user["id"])
 
 
 @app.get("/api/status")

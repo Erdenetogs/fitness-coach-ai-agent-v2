@@ -3,12 +3,12 @@ Claude ямар хэрэгсэл дуудахаа өөрөө шийднэ. Эн�
 бодит ажиллах функц, frontend-д харагдах "агентын алхам"-ын текстийг тодорхойлно."""
 import json
 
-from app import db, planner
+from app import db, planner, xp
 
 TOOLS = [
     {
         "name": "get_user_profile",
-        "description": "Хэрэглэгчийн профайл: нас, хүйс, өндөр, жин, зорилго, түвшин, долоо хоногт хэдэн өдөр дасгал хийх, багаж, өдрийн калорийн зорилт.",
+        "description": "Хэрэглэгчийн профайл: нас, хүйс, өндөр, жин, зорилго, түвшин, долоо хоногт хэдэн өдөр дасгал хийх, багаж, өдрийн калорийн зорилт, coach-ийн level/XP ба дараалсан идэвхтэй өдөр (streak).",
         "input_schema": {"type": "object", "properties": {}},
     },
     {
@@ -117,6 +117,7 @@ def run_tool(uid: int, name: str, args: dict) -> dict:
             "days_per_week": user.get("days_per_week"),
             "equipment": planner.EQUIPMENT.get(user.get("equipment"), user.get("equipment")),
             "nutrition": planner.nutrition(user), "bmi": planner.bmi(user),
+            "coach_level": xp.status(uid),
         }
     if name == "get_workout_plan":
         return {"today": planner.today_name(), "plan": db.get_plan(uid)}

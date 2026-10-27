@@ -39,6 +39,11 @@ CREATE TABLE IF NOT EXISTS recipes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER, recipe_json TEXT, created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS xp_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER, day TEXT, kind TEXT, amount INTEGER, key TEXT,
+    UNIQUE(user_id, kind, key)
+);
 """
 
 
@@ -211,3 +216,29 @@ def get_recipes(uid: int) -> list[dict]:
     with conn() as c:
         rows = c.execute("SELECT id, recipe_json FROM recipes WHERE user_id=? ORDER BY id DESC", (uid,)).fetchall()
         return [{"id": r["id"], **json.loads(r["recipe_json"])} for r in rows]
+
+
+# ---------- XP (оноо) ----------
+def award_xp(uid: int, kind: str, amount: int, key: str) -> bool:
+    """Нэг (kind, key) хослолд нэг л удаа XP өгнө. Шинээр өгсөн бол True."""
+    with conn() as c:
+        cur = c.execute(
+            "INSERT OR IGNORE INTO xp_events (user_id, day, kind, amount, key) VALUES (?,?,?,?,?)",
+            (uid, today(), kind, amount, key),
+        )
+        return cur.rowcount == 1
+
+
+def get_total_xp(uid: int) -> int:
+    with conn() as c:
+        row = c.execute("SELECT COALESCE(SUM(amount), 0) AS s FROM xp_events WHERE user_id=?", (uid,)).fetchone()
+        return int(row["s"])
+
+
+def get_active_days(uid: int) -> list[str]:
+    """XP авсан өдрүүд, шинээс хуучин руу."""
+    with conn() as c:
+        rows = c.execute(
+            "SELECT DISTINCT day FROM xp_events WHERE user_id=? ORDER BY day DESC", (uid,)
+        ).fetchall()
+        return [r["day"] for r in rows]

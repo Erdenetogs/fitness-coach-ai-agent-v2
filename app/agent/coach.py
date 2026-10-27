@@ -25,6 +25,7 @@ SYSTEM = """Чи бол FitCoach — их сургуулийн оюутнууд�
 - Хэрэглэгч жингээ хэлбэл log_weight-ээр бүртгэ.
 - Хүчтэй өвдөлт, толгой эргэх, цээж өвдөх зэрэг шинж тэмдэг дурдвал дасгалаа зогсоож эмчид үзүүлэхийг зөвлө.
 - Эмнэлгийн онош бүү тавь.
+- Хэрэглэгч level, XP, streak-ийн талаар асуувал get_user_profile-аар шалгаад урамшуулж хариул. XP: дасгал дуусгах +40, хоол бүртгэх +15, өдрийн анхны чат +5.
 
 Хэрэглэгчийн тухай санах ойд байгаа баримтууд:
 {memories}
@@ -154,6 +155,16 @@ def _chat_mock(uid: int, message: str) -> dict:
             return {"reply": f"{day} гарагийн дасгалыг хөнгөлж, сет бүрийг нэгээр цөөлөв. Дасгал хуудаснаас шинэчилсэн хувилбарыг харж болно.",
                     "agent_steps": steps, "plan_changed": True}
         return {"reply": f"Өнөөдөр ({day}) амрах өдөр байна. Хүсвэл хөнгөн сунгалт хийгээрэй.",
+                "agent_steps": steps, "plan_changed": False}
+
+    # 3б) Level / XP / streak
+    if any(w in text for w in ["level", "xp", "оноо", "streak", "дараалал"]):
+        lv = use("get_user_profile")["coach_level"]
+        left = lv["need"] - lv["xp"]
+        return {"reply": (f"Чиний coach одоо Level {lv['level']} ({lv['stage']}) байна, нийт {lv['total']} XP. "
+                          f"Дараагийн level хүртэл {left} XP үлдлээ — нэг өдрийн дасгал дуусгахад +40 XP. "
+                          + (f"{lv['streak']} өдөр дараалан идэвхтэй байна, тасралтгүй үргэлжлүүлээрэй!" if lv["streak"] else
+                             "Өнөөдөр нэг дасгал хийгээд streak-ээ эхлүүлье!")),
                 "agent_steps": steps, "plan_changed": False}
 
     # 4) Хоол / калори

@@ -90,7 +90,7 @@
       <article class="card p-4">
         <div class="flex items-start justify-between gap-3">
           <h3 class="font-display font-semibold text-[17px] leading-snug">${escapeHtml(r.title)}</h3>
-          <button data-save="${i}" class="btn btn-ghost py-1.5 px-2.5 text-sm flex-none" aria-label="Жорыг хадгалах"><span class="msr text-[20px]">bookmark_add</span></button>
+          <button data-save="${i}" class="btn btn-ghost py-1.5 px-2.5 text-sm flex-none" aria-label="Жорыг хадгалах (+15 XP)" title="Хадгалах · +15 XP"><span class="msr text-[20px]">bookmark_add</span></button>
         </div>
         <div class="flex gap-4 mt-2 text-[13px] text-ink-2">
           <span><b class="num text-ink">${r.kcal}</b> ккал</span><span><b class="num text-ink">${r.protein_g}</b> г уураг</span><span><b class="num text-ink">${r.time_min}</b> мин</span>
@@ -113,10 +113,10 @@
 
   async function save(b) {
     try {
-      await api("/api/recipes", { json: { recipe: lastRecipes[+b.dataset.save] } });
+      const data = await api("/api/recipes", { json: { recipe: lastRecipes[+b.dataset.save] } });
       b.innerHTML = '<span class="msr fill text-[20px]">bookmark_added</span>';
       b.disabled = true;
-      toast("Жорыг хадгаллаа");
+      if (data.xp) showXp(data.xp); else toast("Жорыг хадгаллаа");
     } catch (e) { toast(e.message); }
   }
 </script>

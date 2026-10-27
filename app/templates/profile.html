@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_coach.html' import level_card %}
 {% block title %}Профайл{% endblock %}
 {% block content %}
 <header class="px-5 pt-8 pb-4 flex items-center gap-3">
@@ -13,6 +14,8 @@
   {% if request.query_params.get('saved') %}
   <p class="rounded-xl bg-mint-soft text-[#0e7a53] text-sm px-4 py-2.5" role="status">Хадгаллаа.</p>
   {% endif %}
+
+  {{ level_card(coach) }}
 
   <form method="post" action="/profile" class="card p-4 space-y-4">
     <h2 class="font-semibold">Миний мэдээлэл</h2>

@@ -3,7 +3,7 @@
 {% block content %}
 <header class="px-5 pt-8 pb-4">
   <h1 class="font-display text-[24px] font-semibold">Долоо хоногийн дасгал</h1>
-  <p class="text-ink-2 text-sm mt-1">Өнөөдрийн дасгалаа хийсэн бол тэмдэглээрэй.</p>
+  <p class="text-ink-2 text-sm mt-1">Өнөөдрийн дасгалаа бүгдийг тэмдэглэвэл coach +40 XP авна.</p>
 </header>
 
 <div class="px-5">
@@ -86,10 +86,11 @@
       const row = box.closest("label");
       row.classList.toggle("done-row", box.checked);
       try {
-        await api("/api/workout/done", { json: { exercise: box.dataset.exercise, done: box.checked } });
+        const data = await api("/api/workout/done", { json: { exercise: box.dataset.exercise, done: box.checked } });
         const all = document.querySelectorAll(".day-panel:not(.hidden) .tick");
         const n = [...all].filter((b) => b.checked).length;
-        if (box.checked) toast(n === all.length ? "Өнөөдрийн дасгал бүгд дууслаа!" : `${n}/${all.length} дууслаа`);
+        if (data.xp) showXp(data.xp);
+        else if (box.checked) toast(n === all.length ? "Өнөөдрийн дасгал бүгд дууслаа!" : `${n}/${all.length} дууслаа`);
       } catch (e) {
         box.checked = !box.checked; row.classList.toggle("done-row", box.checked); toast(e.message);
       }

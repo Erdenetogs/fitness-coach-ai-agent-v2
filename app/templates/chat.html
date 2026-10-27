@@ -1,13 +1,14 @@
 {% extends 'base.html' %}
+{% from '_coach.html' import avatar %}
 {% block title %}Дасгалжуулагч{% endblock %}
 {% block body %}
 <div class="mx-auto max-w-md min-h-screen flex flex-col">
   <header class="sticky top-0 z-10 bg-paper/95 backdrop-blur px-3 pt-4 pb-3 flex items-center gap-2 border-b border-line">
     <a href="/" class="w-10 h-10 grid place-items-center rounded-xl" aria-label="Нүүр рүү буцах"><span class="msr">arrow_back</span></a>
-    <div class="w-10 h-10 rounded-xl bg-ink text-white grid place-items-center"><span class="msr fill">bolt</span></div>
+    {{ avatar(42, coach.level) }}
     <div class="flex-1">
       <h1 class="font-semibold leading-tight">FitCoach дасгалжуулагч</h1>
-      <p class="text-[12px] text-ink-2">{{ 'Claude AI агент' if ai_live else 'Демо горим · API түлхүүргүй' }}</p>
+      <p class="text-[12px] text-ink-2">Level {{ coach.level }} · {{ coach.stage }} · {{ 'Claude AI агент' if ai_live else 'Демо горим' }}</p>
     </div>
   </header>
 
@@ -26,7 +27,7 @@
 
   <div class="sticky bottom-0 bg-paper/95 backdrop-blur border-t border-line px-3 pt-2.5" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom))">
     <div id="chips" class="flex gap-2 overflow-x-auto pb-2.5 [scrollbar-width:none]">
-      {% for q in ['Өнөөдрийн дасгалаа хөнгөлөөч', 'Жин 64.5 кг боллоо', 'Өдөрт хэдэн калори идэх вэ?', 'Энэ долоо хоногийн явц хэр байна?', 'Зүүн өвдөг өвдөж байна'] %}
+      {% for q in ['Өнөөдрийн дасгалаа хөнгөлөөч', 'Жин 64.5 кг боллоо', 'Өдөрт хэдэн калори идэх вэ?', 'Энэ долоо хоногийн явц хэр байна?', 'Миний level ямар байна?', 'Зүүн өвдөг өвдөж байна'] %}
       <button type="button" class="chip flex-none text-[13px] bg-white border border-line rounded-full px-3 py-1.5">{{ q }}</button>
       {% endfor %}
     </div>
@@ -72,6 +73,7 @@
       const data = await api("/api/chat", { json: { message: text } });
       typing.remove();
       addAi(data.reply, data.agent_steps, data.plan_changed);
+      showXp(data.xp);
     } catch (e) {
       typing.remove();
       addAi(e.message + " Дахин оролдоно уу.", []);

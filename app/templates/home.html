@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_coach.html' import level_card %}
 {% block title %}Нүүр{% endblock %}
 {% block content %}
 {% set total = today.exercises|length %}
@@ -40,7 +41,7 @@
           {% if n_done == total %}Өнөөдрийн дасгал дууслаа. Гайхалтай!{% else %}{{ total - n_done }} дасгал үлдлээ{% endif %}
         </p>
         <a href="/workout" class="btn bg-white text-ink mt-4 py-2.5 text-sm">
-          <span class="msr text-[20px]">play_arrow</span>{% if n_done %}Үргэлжлүүлэх{% else %}Эхлэх{% endif %}
+          {% if n_done == total %}<span class="msr text-[20px]">checklist</span>Харах{% else %}<span class="msr text-[20px]">play_arrow</span>{% if n_done %}Үргэлжлүүлэх{% else %}Эхлэх{% endif %}{% endif %}
         </a>
         {% else %}
         <p class="text-white/65 text-sm mt-1">Өнөөдөр амарч, булчингаа сэргээгээрэй.</p>
@@ -48,6 +49,9 @@
       </div>
     </div>
   </section>
+
+  <!-- Coach-ийн level (XP) -->
+  {{ level_card(coach) }}
 
   <!-- Долоо хоног -->
   <section class="card p-4" aria-label="Энэ долоо хоног">

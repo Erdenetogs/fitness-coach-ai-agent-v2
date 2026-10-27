@@ -36,3 +36,11 @@ function renderSteps(steps) {
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
+
+/** Серверээс ирсэн XP мэдээллийг toast-оор харуулах. xp = null бол юу ч хийхгүй. */
+function showXp(xp) {
+  if (!xp) return;
+  toast(xp.leveled_up
+    ? `🎉 Level up! Coach одоо Level ${xp.level} (${xp.stage})`
+    : `+${xp.gained} XP · ${xp.reason}`);
+}
