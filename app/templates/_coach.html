@@ -1,8 +1,9 @@
 {# Coach-ийн дүрс: level бүрт нэг навч (5 хүртэл), level 5-аас толгойн тууз.
-   Санаа: Erdenetogs-ийн Spring Boot хувилбар. Хэрэглэх: {% from '_coach.html' import avatar %}{{ avatar(56, coach.level) }} #}
+   Санаа: Erdenetogs-ийн Spring Boot хувилбар.
+   Хэрэглэх: {% from '_coach.html' import avatar with context %}{{ avatar(56, coach.level) }} #}
 {% macro avatar(size, level) -%}
 {% set leaves = [[level, 1]|max, 5]|min %}
-<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 200 200" role="img" aria-label="AI дасгалжуулагч, level {{ level }}" class="flex-none">
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 200 200" role="img" aria-label="{{ t('coach.avatar_aria', level=level) }}" class="flex-none">
   {% for i in range(leaves) %}
   <path transform="rotate({{ (i - (leaves - 1) / 2) * 26 }} 100 108)" d="M100 36 C86 14 106 2 120 12 C118 26 110 34 100 36Z" fill="#17a673"/>
   {% endfor %}
@@ -15,22 +16,22 @@
 {%- endmacro %}
 
 {# Нүүр ба профайл дээрх level карт #}
-{% macro level_card(coach) -%}
-<a href="/chat?q=Миний level ямар байна?" class="card p-4 flex items-center gap-4" aria-label="Coach-ийн level {{ coach.level }}, {{ coach.xp }} / {{ coach.need }} XP">
+{% macro level_card(coach, extra_class='') -%}
+<a href="/chat?q={{ t('coach.ask_level')|urlencode }}" class="card p-4 flex items-center gap-4 {{ extra_class }}" aria-label="{{ t('coach.card_aria', level=coach.level, xp=coach.xp, need=coach.need) }}">
   {{ avatar(60, coach.level) }}
   <div class="flex-1 min-w-0">
     <div class="flex items-baseline gap-2">
-      <span class="font-display font-semibold text-[17px]">Level {{ coach.level }}</span>
+      <span class="font-display font-semibold text-[17px]">{{ t('coach.level', n=coach.level) }}</span>
       <span class="text-ink-2 text-[13px]">{{ coach.stage }}</span>
     </div>
     <div class="h-2 rounded-full bg-paper mt-2 overflow-hidden" role="progressbar" aria-valuemin="0" aria-valuemax="{{ coach.need }}" aria-valuenow="{{ coach.xp }}">
       <div class="h-full rounded-full bg-mint" style="width: {{ coach.pct }}%"></div>
     </div>
-    <p class="text-ink-2 text-[12.5px] mt-1.5"><span class="num text-ink">{{ coach.xp }}</span> / {{ coach.need }} XP · дараагийн level хүртэл {{ coach.need - coach.xp }}</p>
+    <p class="text-ink-2 text-[12.5px] mt-1.5"><span class="num text-ink">{{ coach.xp }}</span> / {{ coach.need }} XP · {{ t('coach.to_next', n=coach.need - coach.xp) }}</p>
   </div>
   <div class="text-center flex-none pl-1">
     <p class="num text-[22px] font-semibold leading-none {{ 'text-pulse' if coach.streak else 'text-ink-2' }}">{{ coach.streak }}</p>
-    <p class="text-ink-2 text-[11px] mt-1">өдөр<br>дараалан</p>
+    <p class="text-ink-2 text-[11px] mt-1">{{ t('coach.streak1') }}<br>{{ t('coach.streak2') }}</p>
   </div>
 </a>
 {%- endmacro %}

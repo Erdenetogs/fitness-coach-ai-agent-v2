@@ -1,62 +1,62 @@
 {% extends 'base.html' %}
-{% block title %}Дасгал{% endblock %}
+{% block title %}{{ t('page.workout') }}{% endblock %}
 {% block content %}
-<header class="px-5 pt-8 pb-4">
-  <h1 class="font-display text-[24px] font-semibold">Долоо хоногийн дасгал</h1>
-  <p class="text-ink-2 text-sm mt-1">Өнөөдрийн дасгалаа бүгдийг тэмдэглэвэл coach +40 XP авна.</p>
+<header class="px-5 pt-8 pb-4 lg:pt-12 lg:pb-6">
+  <h1 class="font-display text-[24px] lg:text-[32px] font-semibold">{{ t('wo.h1') }}</h1>
+  <p class="text-ink-2 text-sm lg:text-base mt-1">{{ t('wo.sub') }}</p>
 </header>
 
 <div class="px-5">
-  <div role="tablist" aria-label="Гараг" class="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5 [scrollbar-width:none]">
+  <div role="tablist" aria-label="{{ t('wo.days_aria') }}" class="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5 [scrollbar-width:none] lg:mx-0 lg:px-0 lg:grid lg:grid-cols-7 lg:overflow-visible">
     {% for d in WEEKDAYS %}{% set p = plan.get(d, {}) %}
     <button role="tab" id="tab-{{ loop.index0 }}" aria-controls="day-{{ loop.index0 }}" aria-selected="{{ 'true' if d == today_name else 'false' }}"
       data-i="{{ loop.index0 }}"
       class="day-tab flex-none rounded-2xl px-3.5 py-2 text-left border transition-colors">
-      <span class="block text-[12px] opacity-70">{{ 'Өнөөдөр' if d == today_name else d }}</span>
-      <span class="block text-[13.5px] font-semibold whitespace-nowrap">{{ p.title or 'Амрах өдөр' }}</span>
+      <span class="block text-[12px] opacity-70">{{ t('wo.today') if d == today_name else wd(d) }}</span>
+      <span class="block text-[13.5px] font-semibold whitespace-nowrap lg:whitespace-normal">{{ day_title(p) }}</span>
     </button>
     {% endfor %}
   </div>
 </div>
 
-<main class="px-5 mt-4">
+<main class="px-5 mt-4 lg:mt-6">
   {% for d in WEEKDAYS %}{% set p = plan.get(d, {}) %}{% set is_today = d == today_name %}
   <section role="tabpanel" id="day-{{ loop.index0 }}" aria-labelledby="tab-{{ loop.index0 }}" class="day-panel {{ '' if is_today else 'hidden' }}">
     {% if p.exercises %}
-    <ul class="space-y-2.5">
-      {% for ex in p.exercises %}{% set is_done = is_today and ex.name in done %}
+    <ul class="space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
+      {% for e in p.exercises %}{% set is_done = is_today and e.name in done %}
       <li>
-        <label class="row p-3.5 flex items-center gap-3.5 {{ 'done-row' if is_done }} {{ 'cursor-pointer' if is_today }}">
-          <span class="w-12 h-12 rounded-xl bg-track-soft text-track grid place-items-center flex-none"><span class="msr text-[24px]">{{ ex.icon or 'fitness_center' }}</span></span>
+        <label class="row p-3.5 lg:p-4 flex items-center gap-3.5 {{ 'done-row' if is_done }} {{ 'cursor-pointer' if is_today }}">
+          <span class="w-12 h-12 rounded-xl bg-track-soft text-track grid place-items-center flex-none"><span class="msr text-[24px]">{{ e.icon or 'fitness_center' }}</span></span>
           <span class="flex-1 min-w-0">
-            <span class="ex-name block font-semibold">{{ ex.name }}</span>
+            <span class="ex-name block font-semibold">{{ ex(e.name) }}</span>
             <span class="block text-ink-2 text-[13px] num-ish">
-              {% if ex.sets %}{{ ex.sets }} сет × {{ ex.reps or 10 }} удаа{% elif ex.duration_min %}{{ ex.duration_min }} минут{% endif %}
+              {% if e.sets %}{{ t('wo.sets', sets=e.sets, reps=e.reps or 10) }}{% elif e.duration_min %}{{ t('wo.minutes', n=e.duration_min) }}{% endif %}
             </span>
           </span>
           {% if is_today %}
-          <input type="checkbox" class="tick" data-exercise="{{ ex.name }}" {{ 'checked' if is_done }} aria-label="{{ ex.name }} хийсэн">
+          <input type="checkbox" class="tick" data-exercise="{{ e.name }}" {{ 'checked' if is_done }} aria-label="{{ t('wo.done_aria', name=ex(e.name)) }}">
           {% endif %}
         </label>
       </li>
       {% endfor %}
     </ul>
-    {% if not is_today %}<p class="text-ink-2 text-[13px] mt-3">Тэмдэглэгээг тухайн өдөр нь хийнэ.</p>{% endif %}
+    {% if not is_today %}<p class="text-ink-2 text-[13px] mt-3">{{ t('wo.only_today') }}</p>{% endif %}
     {% else %}
     <div class="card p-8 text-center">
       <span class="msr text-[40px] text-ink-2">bedtime</span>
-      <p class="font-semibold mt-2">Амрах өдөр</p>
-      <p class="text-ink-2 text-sm mt-1">Булчин амрах үедээ томордог. Сайн унтаарай.</p>
+      <p class="font-semibold mt-2">{{ t('focus.rest') }}</p>
+      <p class="text-ink-2 text-sm mt-1">{{ t('wo.rest_sub') }}</p>
     </div>
     {% endif %}
   </section>
   {% endfor %}
 
-  <a href="/chat?q=Өнөөдрийн дасгалаа солимоор байна" class="card p-4 mt-5 flex items-center gap-3">
+  <a href="/chat?q={{ t('wo.change_prompt')|urlencode }}" class="card p-4 mt-5 flex items-center gap-3 lg:max-w-xl">
     <span class="msr text-track text-[24px]">tune</span>
     <span class="flex-1">
-      <span class="block font-semibold">Төлөвлөгөөгөө өөрчлөх үү?</span>
-      <span class="block text-ink-2 text-[13px]">Дасгалжуулагчид "хөнгөлөөч", "өвдөг өвдөж байна" гэх мэтээр хэлээрэй</span>
+      <span class="block font-semibold">{{ t('wo.change_q') }}</span>
+      <span class="block text-ink-2 text-[13px]">{{ t('wo.change_hint') }}</span>
     </span>
     <span class="msr text-ink-2">chevron_right</span>
   </a>
@@ -68,16 +68,16 @@
   const tabs = [...document.querySelectorAll(".day-tab")];
   const panels = [...document.querySelectorAll(".day-panel")];
   function select(i) {
-    tabs.forEach((t, k) => {
+    tabs.forEach((tab, k) => {
       const on = k === i;
-      t.setAttribute("aria-selected", on);
-      t.className = "day-tab flex-none rounded-2xl px-3.5 py-2 text-left border transition-colors " +
+      tab.setAttribute("aria-selected", on);
+      tab.className = "day-tab flex-none rounded-2xl px-3.5 py-2 text-left border transition-colors " +
         (on ? "bg-ink text-white border-ink" : "bg-white text-ink border-line");
       panels[k].classList.toggle("hidden", !on);
     });
   }
-  tabs.forEach((t) => t.addEventListener("click", () => select(+t.dataset.i)));
-  const start = tabs.findIndex((t) => t.getAttribute("aria-selected") === "true");
+  tabs.forEach((tab) => tab.addEventListener("click", () => select(+tab.dataset.i)));
+  const start = tabs.findIndex((tab) => tab.getAttribute("aria-selected") === "true");
   select(start);
   tabs[start].scrollIntoView({ inline: "center", block: "nearest" });
 
@@ -90,7 +90,7 @@
         const all = document.querySelectorAll(".day-panel:not(.hidden) .tick");
         const n = [...all].filter((b) => b.checked).length;
         if (data.xp) showXp(data.xp);
-        else if (box.checked) toast(n === all.length ? "Өнөөдрийн дасгал бүгд дууслаа!" : `${n}/${all.length} дууслаа`);
+        else if (box.checked) toast(n === all.length ? t("js.wo_all") : t("js.wo_n", { n, all: all.length }));
       } catch (e) {
         box.checked = !box.checked; row.classList.toggle("done-row", box.checked); toast(e.message);
       }

@@ -1,41 +1,46 @@
 {% extends 'base.html' %}
-{% from '_coach.html' import avatar %}
-{% block title %}Дасгалжуулагч{% endblock %}
+{% from '_coach.html' import avatar with context %}
+{% block title %}{{ t('page.chat') }}{% endblock %}
 {% block body %}
-<div class="mx-auto max-w-md min-h-screen flex flex-col">
-  <header class="sticky top-0 z-10 bg-paper/95 backdrop-blur px-3 pt-4 pb-3 flex items-center gap-2 border-b border-line">
-    <a href="/" class="w-10 h-10 grid place-items-center rounded-xl" aria-label="Нүүр рүү буцах"><span class="msr">arrow_back</span></a>
-    {{ avatar(42, coach.level) }}
-    <div class="flex-1">
-      <h1 class="font-semibold leading-tight">FitCoach дасгалжуулагч</h1>
-      <p class="text-[12px] text-ink-2">Level {{ coach.level }} · {{ coach.stage }} · {{ 'Claude AI агент' if ai_live else 'Демо горим' }}</p>
-    </div>
-  </header>
+<div class="lg:flex">
+  {% include '_sidebar.html' %}
+  <div class="flex-1 min-w-0">
+    <div class="mx-auto max-w-md lg:max-w-3xl min-h-screen flex flex-col">
+      <header class="sticky top-0 z-10 bg-paper/95 backdrop-blur px-3 lg:px-6 pt-4 lg:pt-8 pb-3 flex items-center gap-2 lg:gap-3 border-b border-line">
+        <a href="/" class="lg:hidden w-10 h-10 grid place-items-center rounded-xl" aria-label="{{ t('ch.back') }}"><span class="msr">arrow_back</span></a>
+        {{ avatar(42, coach.level) }}
+        <div class="flex-1">
+          <h1 class="font-semibold lg:text-lg leading-tight">{{ t('ch.title') }}</h1>
+          <p class="text-[12px] text-ink-2">{{ t('coach.level', n=coach.level) }} · {{ coach.stage }} · {{ t('ai.live') if ai_live else t('demo') }}</p>
+        </div>
+      </header>
 
-  <main id="log" class="flex-1 px-4 py-4 space-y-3" aria-live="polite">
-    {% for m in messages %}
-      {% if m.role == 'user' %}
-      <div class="flex justify-end"><p class="bubble-user px-4 py-2.5 max-w-[80%] whitespace-pre-line">{{ m.content }}</p></div>
-      {% else %}
-      <div class="max-w-[88%]">
-        {% if m.agent_steps %}<div class="space-y-1 mb-2">{% for s in m.agent_steps %}<div class="step"><span class="msr">{{ s.icon }}</span>{{ s.text }}</div>{% endfor %}</div>{% endif %}
-        <p class="bubble-ai px-4 py-2.5 whitespace-pre-line">{{ m.content }}</p>
+      <main id="log" class="flex-1 px-4 lg:px-6 py-4 space-y-3" aria-live="polite">
+        {% for m in messages %}
+          {% if m.role == 'user' %}
+          <div class="flex justify-end"><p class="bubble-user px-4 py-2.5 max-w-[80%] lg:max-w-[70%] whitespace-pre-line">{{ m.content }}</p></div>
+          {% else %}
+          <div class="max-w-[88%] lg:max-w-[75%]">
+            {% if m.agent_steps %}<div class="space-y-1 mb-2">{% for s in m.agent_steps %}<div class="step"><span class="msr">{{ s.icon }}</span>{{ s.text }}</div>{% endfor %}</div>{% endif %}
+            <p class="bubble-ai px-4 py-2.5 whitespace-pre-line">{{ m.content }}</p>
+          </div>
+          {% endif %}
+        {% endfor %}
+      </main>
+
+      <div class="sticky bottom-0 bg-paper/95 backdrop-blur border-t border-line px-3 lg:px-6 pt-2.5" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom))">
+        <div id="chips" class="flex gap-2 overflow-x-auto pb-2.5 [scrollbar-width:none] lg:flex-wrap lg:overflow-visible">
+          {% for q in [t('ch.q1'), t('ch.q2'), t('ch.q3'), t('ch.q4'), t('coach.ask_level'), t('ch.q6')] %}
+          <button type="button" class="chip flex-none text-[13px] bg-white border border-line rounded-full px-3 py-1.5">{{ q }}</button>
+          {% endfor %}
+        </div>
+        <form id="chat-form" class="flex items-end gap-2 lg:pb-3">
+          <label for="msg" class="sr-only">{{ t('ch.msg_label') }}</label>
+          <textarea id="msg" rows="1" maxlength="1000" placeholder="{{ t('ch.ph') }}" class="field resize-none max-h-32 py-2.5"></textarea>
+          <button id="send" class="btn btn-primary w-12 h-12 p-0 flex-none" aria-label="{{ t('ch.send') }}"><span class="msr fill">send</span></button>
+        </form>
       </div>
-      {% endif %}
-    {% endfor %}
-  </main>
-
-  <div class="sticky bottom-0 bg-paper/95 backdrop-blur border-t border-line px-3 pt-2.5" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom))">
-    <div id="chips" class="flex gap-2 overflow-x-auto pb-2.5 [scrollbar-width:none]">
-      {% for q in ['Өнөөдрийн дасгалаа хөнгөлөөч', 'Жин 64.5 кг боллоо', 'Өдөрт хэдэн калори идэх вэ?', 'Энэ долоо хоногийн явц хэр байна?', 'Миний level ямар байна?', 'Зүүн өвдөг өвдөж байна'] %}
-      <button type="button" class="chip flex-none text-[13px] bg-white border border-line rounded-full px-3 py-1.5">{{ q }}</button>
-      {% endfor %}
     </div>
-    <form id="chat-form" class="flex items-end gap-2">
-      <label for="msg" class="sr-only">Мессеж</label>
-      <textarea id="msg" rows="1" maxlength="1000" placeholder="Дасгалжуулагчаас асуух…" class="field resize-none max-h-32 py-2.5"></textarea>
-      <button id="send" class="btn btn-primary w-12 h-12 p-0 flex-none" aria-label="Илгээх"><span class="msr fill">send</span></button>
-    </form>
   </div>
 </div>
 {% endblock %}
@@ -51,11 +56,11 @@
   scrollDown();
 
   function addUser(text) {
-    log.insertAdjacentHTML("beforeend", `<div class="flex justify-end"><p class="bubble-user px-4 py-2.5 max-w-[80%] whitespace-pre-line">${escapeHtml(text)}</p></div>`);
+    log.insertAdjacentHTML("beforeend", `<div class="flex justify-end"><p class="bubble-user px-4 py-2.5 max-w-[80%] lg:max-w-[70%] whitespace-pre-line">${escapeHtml(text)}</p></div>`);
   }
   function addAi(text, steps, planChanged) {
-    const link = planChanged ? `<a href="/workout" class="inline-flex items-center gap-1 text-track text-sm font-medium mt-2"><span class="msr text-[18px]">calendar_month</span>Шинэчилсэн төлөвлөгөөг харах</a>` : "";
-    log.insertAdjacentHTML("beforeend", `<div class="max-w-[88%]">${renderSteps(steps)}<p class="bubble-ai px-4 py-2.5 whitespace-pre-line">${escapeHtml(text)}</p>${link}</div>`);
+    const link = planChanged ? `<a href="/workout" class="inline-flex items-center gap-1 text-track text-sm font-medium mt-2"><span class="msr text-[18px]">calendar_month</span>${escapeHtml(t("js.ch_plan"))}</a>` : "";
+    log.insertAdjacentHTML("beforeend", `<div class="max-w-[88%] lg:max-w-[75%]">${renderSteps(steps)}<p class="bubble-ai px-4 py-2.5 whitespace-pre-line">${escapeHtml(text)}</p>${link}</div>`);
   }
 
   async function send(text) {
@@ -66,7 +71,7 @@
     sendBtn.disabled = true;
     const typing = document.createElement("div");
     typing.className = "bubble-ai inline-flex gap-1.5 px-4 py-3.5 typing";
-    typing.setAttribute("aria-label", "Дасгалжуулагч бодож байна");
+    typing.setAttribute("aria-label", t("js.ch_typing"));
     typing.innerHTML = "<span></span><span></span><span></span>";
     log.appendChild(typing); scrollDown();
     try {
@@ -76,7 +81,7 @@
       showXp(data.xp);
     } catch (e) {
       typing.remove();
-      addAi(e.message + " Дахин оролдоно уу.", []);
+      addAi(e.message + " " + t("js.retry"), []);
     } finally {
       sendBtn.disabled = false; scrollDown(); input.focus();
     }

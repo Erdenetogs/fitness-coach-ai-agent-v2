@@ -1,79 +1,90 @@
 {% extends 'base.html' %}
-{% from '_coach.html' import level_card %}
-{% block title %}Профайл{% endblock %}
+{% from '_coach.html' import level_card with context %}
+{% from '_lang.html' import switcher with context %}
+{% block title %}{{ t('page.profile') }}{% endblock %}
 {% block content %}
-<header class="px-5 pt-8 pb-4 flex items-center gap-3">
+<header class="px-5 pt-8 pb-4 lg:pt-12 lg:pb-6 flex items-center gap-3">
   <div class="w-14 h-14 rounded-2xl bg-ink text-white grid place-items-center font-display text-xl font-semibold">{{ user.name[:1] }}</div>
   <div>
-    <h1 class="font-display text-[22px] font-semibold leading-tight">{{ user.name }}</h1>
-    <p class="text-ink-2 text-sm">{{ GOALS[user.goal] }} · {{ LEVELS[user.level] }} түвшин</p>
+    <h1 class="font-display text-[22px] lg:text-[28px] font-semibold leading-tight">{{ user.name }}</h1>
+    <p class="text-ink-2 text-sm">{{ t('pf.sub', goal=t('goal.' ~ user.goal), level=t('level.' ~ user.level)) }}</p>
   </div>
 </header>
 
-<main class="px-5 space-y-4">
+{# Компьютер дээр: зүүн талд мэдээлэл засах, баруун талд санах ой, тооцоо, хэл #}
+<main class="px-5 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-5 lg:items-start">
   {% if request.query_params.get('saved') %}
-  <p class="rounded-xl bg-mint-soft text-[#0e7a53] text-sm px-4 py-2.5" role="status">Хадгаллаа.</p>
+  <p class="rounded-xl bg-mint-soft text-[#0e7a53] text-sm px-4 py-2.5 lg:col-span-12" role="status">{{ t('pf.saved') }}</p>
   {% endif %}
 
-  {{ level_card(coach) }}
+  <div class="space-y-4 lg:col-span-7">
+    {{ level_card(coach) }}
 
-  <form method="post" action="/profile" class="card p-4 space-y-4">
-    <h2 class="font-semibold">Миний мэдээлэл</h2>
-    <div>
-      <label class="label" for="name">Нэр</label>
-      <input class="field" id="name" name="name" value="{{ user.name }}" required maxlength="40">
-    </div>
-    <div class="grid grid-cols-3 gap-2.5">
-      <div><label class="label" for="age">Нас</label><input class="field" id="age" name="age" type="number" min="14" max="80" value="{{ user.age }}" required></div>
-      <div><label class="label" for="height_cm">Өндөр</label><input class="field" id="height_cm" name="height_cm" type="number" step="0.1" min="120" max="230" value="{{ '%g'|format(user.height_cm) }}" required></div>
-      <div><label class="label" for="gender">Хүйс</label>
-        <select class="field" id="gender" name="gender">
-          <option value="male" {{ 'selected' if user.gender == 'male' }}>Эр</option>
-          <option value="female" {{ 'selected' if user.gender == 'female' }}>Эм</option>
-        </select></div>
-    </div>
-    <div class="grid grid-cols-2 gap-2.5">
-      <div><label class="label" for="goal">Зорилго</label>
-        <select class="field" id="goal" name="goal">{% for k, v in GOALS.items() %}<option value="{{ k }}" {{ 'selected' if user.goal == k }}>{{ v }}</option>{% endfor %}</select></div>
-      <div><label class="label" for="level">Түвшин</label>
-        <select class="field" id="level" name="level">{% for k, v in LEVELS.items() %}<option value="{{ k }}" {{ 'selected' if user.level == k }}>{{ v }}</option>{% endfor %}</select></div>
-      <div><label class="label" for="days_per_week">Өдөр / 7 хоног</label>
-        <select class="field" id="days_per_week" name="days_per_week">{% for n in range(2, 7) %}<option {{ 'selected' if user.days_per_week == n }}>{{ n }}</option>{% endfor %}</select></div>
-      <div><label class="label" for="equipment">Багаж</label>
-        <select class="field" id="equipment" name="equipment">{% for k, v in EQUIPMENT.items() %}<option value="{{ k }}" {{ 'selected' if user.equipment == k }}>{{ v }}</option>{% endfor %}</select></div>
-    </div>
-    <label class="flex items-start gap-2.5 text-[14px]">
-      <input type="checkbox" name="rebuild" value="yes" class="mt-1 w-4 h-4 accent-[#2d5bff]">
-      <span>Шинэ мэдээллээр дасгалын төлөвлөгөөг дахин гаргах<br><span class="text-ink-2 text-[12.5px]">Дасгалжуулагчийн хийсэн өөрчлөлтүүд арилна</span></span>
-    </label>
-    <button class="btn btn-primary w-full">Хадгалах</button>
-  </form>
+    <form method="post" action="/profile" class="card p-4 lg:p-5 space-y-4">
+      <h2 class="font-semibold">{{ t('pf.info') }}</h2>
+      <div>
+        <label class="label" for="name">{{ t('f.name') }}</label>
+        <input class="field" id="name" name="name" value="{{ user.name }}" required maxlength="40">
+      </div>
+      <div class="grid grid-cols-3 gap-2.5">
+        <div><label class="label" for="age">{{ t('f.age') }}</label><input class="field" id="age" name="age" type="number" min="14" max="80" value="{{ user.age }}" required></div>
+        <div><label class="label" for="height_cm">{{ t('f.height') }}</label><input class="field" id="height_cm" name="height_cm" type="number" step="0.1" min="120" max="230" value="{{ '%g'|format(user.height_cm) }}" required></div>
+        <div><label class="label" for="gender">{{ t('f.gender') }}</label>
+          <select class="field" id="gender" name="gender">
+            <option value="male" {{ 'selected' if user.gender == 'male' }}>{{ t('f.male') }}</option>
+            <option value="female" {{ 'selected' if user.gender == 'female' }}>{{ t('f.female') }}</option>
+          </select></div>
+      </div>
+      <div class="grid grid-cols-2 gap-2.5">
+        <div><label class="label" for="goal">{{ t('f.goal') }}</label>
+          <select class="field" id="goal" name="goal">{% for k in GOALS %}<option value="{{ k }}" {{ 'selected' if user.goal == k }}>{{ t('goal.' ~ k) }}</option>{% endfor %}</select></div>
+        <div><label class="label" for="level">{{ t('f.level') }}</label>
+          <select class="field" id="level" name="level">{% for k in LEVELS %}<option value="{{ k }}" {{ 'selected' if user.level == k }}>{{ t('level.' ~ k) }}</option>{% endfor %}</select></div>
+        <div><label class="label" for="days_per_week">{{ t('f.days') }}</label>
+          <select class="field" id="days_per_week" name="days_per_week">{% for n in range(2, 7) %}<option {{ 'selected' if user.days_per_week == n }}>{{ n }}</option>{% endfor %}</select></div>
+        <div><label class="label" for="equipment">{{ t('f.equipment') }}</label>
+          <select class="field" id="equipment" name="equipment">{% for k in EQUIPMENT %}<option value="{{ k }}" {{ 'selected' if user.equipment == k }}>{{ t('equip.' ~ k) }}</option>{% endfor %}</select></div>
+      </div>
+      <label class="flex items-start gap-2.5 text-[14px]">
+        <input type="checkbox" name="rebuild" value="yes" class="mt-1 w-4 h-4 accent-[#2d5bff]">
+        <span>{{ t('pf.rebuild') }}<br><span class="text-ink-2 text-[12.5px]">{{ t('pf.rebuild_sub') }}</span></span>
+      </label>
+      <button class="btn btn-primary w-full">{{ t('pf.save') }}</button>
+    </form>
+  </div>
 
-  <section class="card p-4" id="memory">
-    <h2 class="font-semibold">Дасгалжуулагчийн санах ой</h2>
-    <p class="text-ink-2 text-[13px] mt-0.5 mb-3">Чатаар хэлсэн зүйлсээс агентын хадгалсан баримтууд. Хэрэггүйг нь устгаж болно.</p>
-    {% if memories %}
-    <ul class="space-y-2" id="mem-list">
-      {% for m in memories %}
-      <li class="row px-3.5 py-2.5 flex items-center gap-2.5">
-        <span class="msr text-track text-[20px]">bookmark</span>
-        <span class="flex-1 text-[14px]">{{ m.text }}</span>
-        <button class="del w-8 h-8 grid place-items-center rounded-lg text-ink-2 hover:bg-paper" data-id="{{ m.id }}" aria-label="Устгах"><span class="msr text-[20px]">close</span></button>
-      </li>
-      {% endfor %}
-    </ul>
-    {% else %}
-    <p class="text-[14px]">Хоосон байна.</p>
-    {% endif %}
-  </section>
+  <div class="space-y-4 lg:col-span-5">
+    <section class="card p-4 lg:p-5 flex items-center justify-between gap-3">
+      <h2 class="font-semibold">{{ t('lang.label') }}</h2>
+      {{ switcher() }}
+    </section>
 
-  <section class="card p-4 text-[14px] space-y-1">
-    <p>Өдрийн калори: <b class="num">{{ "{:,}".format(nutrition.kcal) }}</b> ккал (зарцуулалт {{ "{:,}".format(nutrition.tdee) }})</p>
-    <p>Уураг: <b class="num">{{ nutrition.protein_g }}</b> г</p>
-    <p class="text-ink-2 text-[12.5px] pt-1">Mifflin–St Jeor томьёогоор тооцсон ойролцоо утга. Эмчийн зөвлөгөөг орлохгүй.</p>
-  </section>
+    <section class="card p-4 lg:p-5" id="memory">
+      <h2 class="font-semibold">{{ t('pf.memory') }}</h2>
+      <p class="text-ink-2 text-[13px] mt-0.5 mb-3">{{ t('pf.memory_sub') }}</p>
+      {% if memories %}
+      <ul class="space-y-2" id="mem-list">
+        {% for m in memories %}
+        <li class="row px-3.5 py-2.5 flex items-center gap-2.5">
+          <span class="msr text-track text-[20px]">bookmark</span>
+          <span class="flex-1 text-[14px]">{{ m.text }}</span>
+          <button class="del w-8 h-8 grid place-items-center rounded-lg text-ink-2 hover:bg-paper" data-id="{{ m.id }}" aria-label="{{ t('pf.delete') }}"><span class="msr text-[20px]">close</span></button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="text-[14px]">{{ t('pf.empty') }}</p>
+      {% endif %}
+    </section>
 
-  <a href="/logout" class="btn btn-ghost w-full">Гарах</a>
+    <section class="card p-4 lg:p-5 text-[14px] space-y-1">
+      <p>{{ t('pf.kcal') }}: <b class="num">{{ "{:,}".format(nutrition.kcal) }}</b> {{ t('unit.kcal') }} ({{ t('pf.tdee', n="{:,}".format(nutrition.tdee)) }})</p>
+      <p>{{ t('pf.protein') }}: <b class="num">{{ nutrition.protein_g }}</b> {{ t('unit.g') }}</p>
+      <p class="text-ink-2 text-[12.5px] pt-1">{{ t('pf.disclaimer') }}</p>
+    </section>
+
+    <a href="/logout" class="btn btn-ghost w-full">{{ t('pf.logout') }}</a>
+  </div>
 </main>
 {% endblock %}
 
@@ -83,7 +94,7 @@
     try {
       await api(`/api/memory/${b.dataset.id}`, { method: "DELETE" });
       b.closest("li").remove();
-      toast("Санах ойгоос устгалаа");
+      toast(t("js.pf_deleted"));
     } catch (e) { toast(e.message); }
   }));
 </script>
