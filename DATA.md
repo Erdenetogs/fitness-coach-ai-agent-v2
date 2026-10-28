@@ -1,6 +1,6 @@
 # API гэрээ (Frontend ↔ Backend)
 
-Бүх API нь `fitcoach_uid` cookie-оор хэрэглэгчийг таньдаг (onboarding бөглөхөд тавигдана). Cookie байхгүй бол `401 {"error": "..."}`.
+Бүх API нь `fitcoach_token` cookie-оор хэрэглэгчийг таньдаг (onboarding бөглөхөд тавигдана). Cookie-д хэрэглэгчийн id биш, санамсаргүй token хадгалагдана. Cookie байхгүй эсвэл буруу бол `401 {"error": "..."}`.
 Алдааны үед бүх API `{"error": "Монгол тайлбар"}` буцаана.
 
 ## Агентын алхам (`agent_steps`)
