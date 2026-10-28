@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}{{ t('page.progress') }}{% endblock %}
+{% block content %}
+<header class="px-5 pt-8 pb-4 lg:pt-12 lg:pb-6">
+  <h1 class="font-display text-[24px] lg:text-[32px] font-semibold">{{ t('page.progress') }}</h1>
+</header>
+
+{# Компьютер дээр: дээр 3 тоо, доор график (2 багана) + 4 долоо хоног (1 багана) #}
+<main class="px-5 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-5 lg:items-start">
+  <section class="grid grid-cols-3 gap-2.5 lg:gap-5 lg:col-span-3">
+    <div class="card p-3.5 lg:p-5">
+      <p class="text-ink-2 text-[12px] lg:text-[13px]">{{ t('pr.now') }}</p>
+      <p class="num text-lg lg:text-[26px] font-semibold mt-0.5"><span id="cur-kg">{{ weights[-1].kg if weights else user.weight_kg }}</span><span class="text-[12px] lg:text-sm text-ink-2 font-normal"> {{ t('unit.kg') }}</span></p>
+    </div>
+    <div class="card p-3.5 lg:p-5">
+      <p class="text-ink-2 text-[12px] lg:text-[13px]">{{ t('pr.change') }}</p>
+      <p class="num text-lg lg:text-[26px] font-semibold mt-0.5" id="chg">{{ '%+.1f'|format(change) }}</p>
+    </div>
+    <div class="card p-3.5 lg:p-5">
+      <p class="text-ink-2 text-[12px] lg:text-[13px]">BMI</p>
+      <p class="num text-lg lg:text-[26px] font-semibold mt-0.5">{{ bmi }}</p>
+    </div>
+  </section>
+
+  <section class="card p-4 lg:p-6 lg:col-span-2">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold">{{ t('pr.weight_h') }}</h2>
+    </div>
+    <div class="h-52 lg:h-72"><canvas id="chart" aria-label="{{ t('pr.chart_aria') }}" role="img"></canvas></div>
+    <p id="chart-hint" class="text-ink-2 text-[13px] mt-2 {{ 'hidden' if weights|length > 1 }}">{{ t('pr.hint') }}</p>
+    <form id="w-form" class="flex gap-2 mt-4 lg:max-w-md">
+      <label for="kg" class="sr-only">{{ t('pr.today_label') }}</label>
+      <input id="kg" type="number" step="0.1" min="25" max="300" inputmode="decimal" class="field" placeholder="{{ t('pr.today_ph') }}" required>
+      <button class="btn btn-dark flex-none">{{ t('pr.log') }}</button>
+    </form>
+  </section>
+
+  <section class="card p-4 lg:p-6">
+    <h2 class="font-semibold mb-3">{{ t('pr.4w') }}</h2>
+    <div class="grid grid-cols-7 gap-1.5 max-w-[17rem] lg:max-w-none" id="heat" aria-label="{{ t('pr.days_aria') }}"></div>
+    <p class="text-ink-2 text-[13px] mt-3">{{ t('pr.n_days', n='<span class="num font-semibold text-ink">%d</span>'|format(history|length))|safe }}</p>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+  let weights = {{ weights|tojson }};
+  const history = {{ history|tojson }};
+
+  // Chart.js CDN ачаалагдаагүй (интернэтгүй) үед ч жин бүртгэх форм ажиллах ёстой
+  const ctx = document.getElementById("chart");
+  const chart = typeof Chart === "undefined" ? null : new Chart(ctx, {
+    type: "line",
+    data: { labels: weights.map((w) => w.day.slice(5)), datasets: [{
+      data: weights.map((w) => w.kg), borderColor: "#2d5bff", backgroundColor: "rgba(45,91,255,.08)",
+      fill: true, tension: .35, pointRadius: 3.5, pointBackgroundColor: "#2d5bff", borderWidth: 2.5 }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
+      scales: { x: { grid: { display: false }, ticks: { color: "#5b6680" } },
+                y: { grid: { color: "#eef1f6" }, ticks: { color: "#5b6680" }, grace: 1 } } },
+  });
+
+  // Орон нутгийн огноо (YYYY-MM-DD). toISOString() нь UTC тул Солонгост өглөө 9-өөс өмнө өчигдрийг өгдөг.
+  const localDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  // 28 өдрийн дулааны зураг
+  const heat = document.getElementById("heat");
+  const doneSet = new Set(history.map((h) => h.day));
+  const today = new Date();
+  for (let i = 27; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const key = localDay(d);
+    const on = doneSet.has(key);
+    heat.insertAdjacentHTML("beforeend",
+      `<div title="${key}${on ? ": " + escapeHtml(t("js.pr_done")) : ""}" class="aspect-square rounded-md ${on ? "bg-mint" : "bg-paper"} ${i === 0 ? "ring-2 ring-pulse" : ""}"></div>`);
+  }
+
+  document.getElementById("w-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const kg = parseFloat(document.getElementById("kg").value);
+    try {
+      const data = await api("/api/weight", { json: { kg } });
+      weights = data.weights;
+      if (chart) {
+        chart.data.labels = weights.map((w) => w.day.slice(5));
+        chart.data.datasets[0].data = weights.map((w) => w.kg);
+        chart.update();
+      }
+      document.getElementById("chart-hint").classList.toggle("hidden", weights.length > 1);
+      document.getElementById("cur-kg").textContent = weights.at(-1).kg;
+      const ch = weights.length > 1 ? weights.at(-1).kg - weights[0].kg : 0;
+      document.getElementById("chg").textContent = (ch >= 0 ? "+" : "") + ch.toFixed(1);
+      document.getElementById("kg").value = "";
+      toast(t("js.pr_logged", { kg }));
+    } catch (err) { toast(err.message); }
+  });
+</script>
+{% endblock %}

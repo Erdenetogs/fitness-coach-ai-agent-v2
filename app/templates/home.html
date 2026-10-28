@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% from '_coach.html' import level_card with context %}
+{% from '_lang.html' import switcher with context %}
+{% block title %}{{ t('page.home') }}{% endblock %}
+{% block content %}
+{% set total = today.exercises|length %}
+{% set n_done = today.exercises|selectattr('name', 'in', done)|list|length %}
+<header class="px-5 pt-8 pb-5 lg:pt-12 lg:pb-7 flex items-start justify-between gap-3">
+  <div>
+    <p class="text-ink-2 text-sm">{{ t('home.weekday', day=wd(today_name)) }}</p>
+    <h1 class="font-display text-[24px] lg:text-[32px] font-semibold leading-tight mt-0.5">{{ t('home.hello', name=user.name) }}</h1>
+  </div>
+  <div class="flex flex-col items-end gap-2 lg:hidden">
+    {{ switcher() }}
+    {% if not ai_live %}
+    <span class="text-[11px] font-medium text-ink-2 bg-white border border-line rounded-full px-2.5 py-1" title="{{ t('demo.title') }}">{{ t('demo') }}</span>
+    {% endif %}
+  </div>
+</header>
+
+<main class="px-5 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-5">
+  <!-- Өнөөдрийн дасгал: нүүрний гол элемент -->
+  <section class="rounded-[26px] bg-ink text-white p-5 lg:p-8 lg:col-span-2 lg:row-start-1" aria-labelledby="today-h">
+    <div class="flex items-center gap-5 lg:gap-8">
+      <div class="relative w-[118px] h-[118px] lg:w-[168px] lg:h-[168px] flex-none">
+        {% set r = 50 %}{% set c = 2 * 3.14159 * r %}
+        {% set pct = (n_done / total) if total else 0 %}
+        <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90" aria-hidden="true">
+          <circle cx="60" cy="60" r="{{ r }}" fill="none" stroke-width="11" class="ring-track"/>
+          <circle id="ring" cx="60" cy="60" r="{{ r }}" fill="none" stroke-width="11" stroke-linecap="round" class="ring-bar"
+                  stroke-dasharray="{{ c }}" stroke-dashoffset="{{ c * (1 - pct) }}" data-c="{{ c }}"/>
+        </svg>
+        <div class="absolute inset-0 grid place-items-center text-center">
+          {% if total %}
+          <div><span id="ring-done" class="num text-[30px] lg:text-[42px] font-semibold">{{ n_done }}</span><span class="num text-white/50 text-lg lg:text-2xl">/{{ total }}</span></div>
+          {% else %}
+          <span class="msr text-[40px] lg:text-[54px] text-white/70">bedtime</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="min-w-0">
+        <h2 id="today-h" class="font-display text-xl lg:text-[28px] font-semibold">{{ day_title(today) }}</h2>
+        {% if total %}
+        <p class="text-white/65 text-sm lg:text-base mt-1" id="ring-msg">
+          {% if n_done == total %}{{ t('home.done_all') }}{% else %}{{ t('home.left', n=total - n_done) }}{% endif %}
+        </p>
+        <ul class="hidden lg:flex flex-wrap gap-1.5 mt-4" aria-hidden="true">
+          {% for e in today.exercises %}<li class="text-[13px] rounded-full px-3 py-1 {{ 'bg-mint/25 text-white/60 line-through' if e.name in done else 'bg-white/10 text-white/85' }}">{{ ex(e.name) }}</li>{% endfor %}
+        </ul>
+        <a href="/workout" class="btn bg-white text-ink mt-4 lg:mt-5 py-2.5 text-sm">
+          {% if n_done == total %}<span class="msr text-[20px]">checklist</span>{{ t('home.view') }}{% else %}<span class="msr text-[20px]">play_arrow</span>{% if n_done %}{{ t('home.continue') }}{% else %}{{ t('home.start') }}{% endif %}{% endif %}
+        </a>
+        {% else %}
+        <p class="text-white/65 text-sm lg:text-base mt-1">{{ t('home.rest') }}</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Coach-ийн level (XP). Компьютер дээр зүүн цэсэнд харагддаг тул энд нууна. -->
+  {{ level_card(coach, 'lg:hidden') }}
+
+  <!-- Тоонууд -->
+  <section class="grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-5 lg:col-start-3 lg:row-start-1">
+    <div class="card p-4 lg:p-5">
+      <p class="text-ink-2 text-[13px]">{{ t('home.kcal') }}</p>
+      <p class="mt-1"><span class="num text-[22px] lg:text-[26px] font-semibold">{{ "{:,}".format(nutrition.kcal) }}</span> <span class="text-ink-2 text-sm">{{ t('unit.kcal') }}</span></p>
+      <p class="text-[12.5px] text-ink-2 mt-1">{{ t('home.protein', n=nutrition.protein_g) }}</p>
+    </div>
+    <a href="/progress" class="card p-4 lg:p-5 block">
+      <p class="text-ink-2 text-[13px]">{{ t('home.weight') }}</p>
+      <p class="mt-1"><span class="num text-[22px] lg:text-[26px] font-semibold">{{ weights[-1].kg if weights else user.weight_kg }}</span> <span class="text-ink-2 text-sm">{{ t('unit.kg') }}</span></p>
+      {% if weights|length > 1 %}{% set ch = (weights[-1].kg - weights[0].kg)|round(1) %}
+      <p class="text-[12.5px] mt-1 {{ 'text-mint' if (ch < 0 and user.goal == 'lose') or (ch > 0 and user.goal == 'gain') else 'text-ink-2' }}">
+        {{ t('home.change', x='%+.1f'|format(ch)) }}</p>
+      {% else %}<p class="text-[12.5px] text-ink-2 mt-1">{{ t('home.goal', goal=t('goal.' ~ user.goal)) }}</p>{% endif %}
+    </a>
+  </section>
+
+  <!-- Долоо хоног -->
+  <section class="card p-4 lg:p-5 lg:col-span-2 lg:row-start-2" aria-label="{{ t('home.week_aria') }}">
+    <div class="grid grid-cols-7 gap-1 text-center">
+      {% for d, title, has in week_days %}
+      <div class="flex flex-col items-center gap-1.5">
+        <span class="text-[11px] lg:text-[12px] {{ 'text-ink font-semibold' if d == today_name else 'text-ink-2' }}">{{ wd(d, short=True) }}</span>
+        <span class="w-8 h-8 lg:w-10 lg:h-10 rounded-full grid place-items-center text-[12px]
+          {% if d == today_name %}bg-pulse text-white{% elif has %}bg-track-soft text-track{% else %}bg-paper text-ink-2{% endif %}"
+          title="{{ wd(d) }}: {{ title }}">
+          <span class="msr text-[17px] lg:text-[20px]">{{ 'fitness_center' if has else 'remove' }}</span>
+        </span>
+        <span class="hidden lg:block text-[11.5px] text-ink-2 leading-tight">{{ title }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Хөргөгч -->
+  <a href="/food" class="card p-4 lg:p-5 flex items-center gap-4 lg:col-start-3 lg:row-start-2">
+    <div class="w-12 h-12 rounded-2xl bg-mint-soft text-mint grid place-items-center flex-none"><span class="msr text-[26px]">kitchen</span></div>
+    <div class="flex-1">
+      <p class="font-semibold">{{ t('home.fridge') }}</p>
+      <p class="text-ink-2 text-[13px]">{{ t('home.fridge_sub') }}</p>
+    </div>
+    <span class="msr text-ink-2">chevron_right</span>
+  </a>
+
+  <!-- Агентын санах ой -->
+  <section class="card p-4 lg:p-5 lg:col-span-3">
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="font-semibold">{{ t('home.memory') }}</h2>
+      <a href="/profile#memory" class="text-track text-sm font-medium">{{ t('home.all') }}</a>
+    </div>
+    {% if memories %}
+    <ul class="space-y-1.5 lg:space-y-0 lg:grid lg:grid-cols-3 lg:gap-2">
+      {% for m in memories %}<li class="step text-[13.5px]"><span class="msr">bookmark</span>{{ m.text }}</li>{% endfor %}
+    </ul>
+    {% else %}
+    <p class="text-ink-2 text-[13.5px]">{{ t('home.memory_empty') }}</p>
+    {% endif %}
+  </section>
+</main>
+{% endblock %}

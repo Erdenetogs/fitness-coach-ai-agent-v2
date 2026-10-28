@@ -1,0 +1,18 @@
+# Render.com дээр байршуулах тохиргоо (Blueprint).
+# Render → New → Blueprint → энэ repo-г сонгоход автоматаар уншина.
+services:
+  - type: web
+    name: fitcoach
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: CLAUDE_MODEL
+        value: claude-sonnet-5-5
+      - key: ANTHROPIC_API_KEY
+        sync: false   # Render-ийн dashboard дээр гараар оруулна. GitHub-д БҮҮ бич.

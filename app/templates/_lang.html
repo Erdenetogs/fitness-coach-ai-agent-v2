@@ -1,0 +1,10 @@
+{# Хэл солих товч. Хэрэглэх: {% from '_lang.html' import switcher with context %}{{ switcher() }}
+   dark=True — хар дэвсгэр дээр (компьютерийн цэс). #}
+{% macro switcher(dark=False) -%}
+<div role="group" aria-label="{{ t('lang.label') }}" class="lang-switch {{ 'lang-dark' if dark }}">
+  {% for code, name in LANGS.items() %}
+  <a href="/lang/{{ code }}?next={{ request.url.path|urlencode }}" lang="{{ code }}" hreflang="{{ code }}" title="{{ name }}"
+     {% if code == lang %}aria-current="true"{% endif %}>{{ LANG_SHORT[code] }}</a>
+  {% endfor %}
+</div>
+{%- endmacro %}
