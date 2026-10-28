@@ -1,5 +1,12 @@
 // Бүх хуудсанд хэрэглэгдэх туслах функцууд
 
+/** Орчуулга: t("js.wo_n", { n: 2, all: 4 }). Текстүүд app/i18n.py-д ("js." -ээр эхэлсэн түлхүүр). */
+function t(key, vars = {}) {
+  let s = (window.T && window.T[key]) || key;
+  for (const [k, v] of Object.entries(vars)) s = s.split(`{${k}}`).join(String(v));
+  return s;
+}
+
 /** JSON илгээж, JSON хүлээн авах. Алдаа гарвал Error шиднэ. */
 async function api(url, options = {}) {
   const opts = { method: "POST", ...options };
@@ -11,7 +18,7 @@ async function api(url, options = {}) {
   const res = await fetch(url, opts);
   let data = {};
   try { data = await res.json(); } catch (_) {}
-  if (!res.ok) throw new Error(data.error || `Сервертэй холбогдож чадсангүй (${res.status})`);
+  if (!res.ok) throw new Error(data.error || (typeof data.detail === "string" && data.detail) || t("js.net", { status: res.status }));
   return data;
 }
 
@@ -41,6 +48,6 @@ function escapeHtml(str) {
 function showXp(xp) {
   if (!xp) return;
   toast(xp.leveled_up
-    ? `🎉 Level up! Coach одоо Level ${xp.level} (${xp.stage})`
-    : `+${xp.gained} XP · ${xp.reason}`);
+    ? t("js.levelup", { level: xp.level, stage: xp.stage })
+    : t("js.xp", { gained: xp.gained, reason: xp.reason }));
 }
