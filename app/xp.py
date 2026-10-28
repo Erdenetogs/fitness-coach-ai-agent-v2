@@ -8,33 +8,27 @@
 """
 from datetime import date, timedelta
 
-from app import db
+from app import db, i18n
 
 XP = {"workout": 40, "meal": 15, "chat": 5}
-REASONS = {"workout": "өнөөдрийн дасгал дууслаа", "meal": "хоол бүртгэлээ", "chat": "өдрийн анхны яриа"}
 
 
 def need(level: int) -> int:
     return 100 * level
 
 
-def stage(level: int) -> str:
-    if level >= 8:
-        return "Аварга"
-    if level >= 5:
-        return "Тамирчин"
-    if level >= 3:
-        return "Нахиа"
-    return "Үр"
+def stage(level: int, lang: str = "mn") -> str:
+    n = 4 if level >= 8 else 3 if level >= 5 else 2 if level >= 3 else 1
+    return i18n.t(f"stage.{n}", lang)
 
 
-def from_total(total: int) -> dict:
+def from_total(total: int, lang: str = "mn") -> dict:
     level, xp = 1, total
     while xp >= need(level):
         xp -= need(level)
         level += 1
     return {"level": level, "xp": xp, "need": need(level), "total": total,
-            "stage": stage(level), "pct": round(100 * xp / need(level))}
+            "stage": stage(level, lang), "pct": round(100 * xp / need(level))}
 
 
 def streak(uid: int) -> int:
@@ -50,14 +44,14 @@ def streak(uid: int) -> int:
     return n
 
 
-def status(uid: int) -> dict:
-    return {**from_total(db.get_total_xp(uid)), "streak": streak(uid)}
+def status(uid: int, lang: str = "mn") -> dict:
+    return {**from_total(db.get_total_xp(uid), lang), "streak": streak(uid)}
 
 
-def award(uid: int, kind: str, key: str) -> dict | None:
+def award(uid: int, kind: str, key: str, lang: str = "mn") -> dict | None:
     """XP өгөөд frontend-д харуулах мэдээлэл буцаана. Аль хэдийн авсан бол None."""
     before = from_total(db.get_total_xp(uid))["level"]
     if not db.award_xp(uid, kind, XP[kind], key):
         return None
-    st = status(uid)
-    return {"gained": XP[kind], "reason": REASONS[kind], "leveled_up": st["level"] > before, **st}
+    st = status(uid, lang)
+    return {"gained": XP[kind], "reason": i18n.t(f"xp.{kind}", lang), "leveled_up": st["level"] > before, **st}

@@ -4,7 +4,7 @@ Claude-ийн зураг харах (vision) чадварыг ашиглана. 
 авахын тулд "submit_recipes" хэрэгслийг заавал дуудуулна (tool_choice)."""
 import base64
 
-from app import db, planner
+from app import db, i18n, planner
 from app.agent import llm
 
 RECIPE_TOOL = {
@@ -13,7 +13,7 @@ RECIPE_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
-            "ingredients": {"type": "array", "items": {"type": "string"}, "description": "Танигдсан орцууд, монголоор"},
+            "ingredients": {"type": "array", "items": {"type": "string"}, "description": "Танигдсан орцууд, хэрэглэгчийн хэлээр"},
             "recipes": {
                 "type": "array",
                 "minItems": 1, "maxItems": 3,
@@ -38,29 +38,30 @@ RECIPE_TOOL = {
 }
 
 
-def analyze(uid: int, image_bytes: bytes | None, media_type: str | None, typed: str = "") -> dict:
+def analyze(uid: int, image_bytes: bytes | None, media_type: str | None, typed: str = "", lang: str = "mn") -> dict:
     user = db.get_user(uid) or {}
     n = planner.nutrition(user)
     memories = [m["text"] for m in db.get_memories(uid)]
-    steps = [{"icon": "person_search", "text": "Профайл, калорийн зорилтыг уншсан"}]
+    t = lambda key, **kw: i18n.t(key, lang, **kw)  # noqa: E731
+    steps = [{"icon": "person_search", "text": t("step.f_profile")}]
     if memories:
-        steps.append({"icon": "bookmark", "text": "Санах ой (харшил, дуршил)-г шалгасан"})
+        steps.append({"icon": "bookmark", "text": t("step.f_memory")})
 
     if llm.is_live():
         try:
-            data = _analyze_live(user, n, memories, image_bytes, media_type, typed)
-            steps.append({"icon": "photo_camera", "text": "Зурагнаас орц таньсан" if image_bytes else "Орцын жагсаалтыг уншсан"})
-            steps.append({"icon": "restaurant_menu", "text": f"{len(data['recipes'])} жор боловсруулсан"})
+            data = _analyze_live(user, n, memories, image_bytes, media_type, typed, lang)
+            steps.append({"icon": "photo_camera", "text": t("step.f_photo") if image_bytes else t("step.f_list")})
+            steps.append({"icon": "restaurant_menu", "text": t("step.f_recipes", n=len(data["recipes"]))})
             return {**data, "agent_steps": steps, "target": n, "demo": False}
         except Exception as e:
-            steps.append({"icon": "error", "text": f"AI алдаа ({type(e).__name__}) — демо хариу"})
-    data = _mock(user, typed)
-    steps.append({"icon": "photo_camera", "text": "Орц таньсан (демо)"})
-    steps.append({"icon": "restaurant_menu", "text": f"{len(data['recipes'])} жор санал болгосон"})
+            steps.append({"icon": "error", "text": t("step.f_error", e=type(e).__name__)})
+    data = _mock(user, typed, lang)
+    steps.append({"icon": "photo_camera", "text": t("step.f_demo_photo")})
+    steps.append({"icon": "restaurant_menu", "text": t("step.f_suggested", n=len(data["recipes"]))})
     return {**data, "agent_steps": steps, "target": n, "demo": True}
 
 
-def _analyze_live(user, n, memories, image_bytes, media_type, typed) -> dict:
+def _analyze_live(user, n, memories, image_bytes, media_type, typed, lang="mn") -> dict:
     client = llm.get_client()
     goal = planner.GOALS.get(user.get("goal"), "Эрүүл чийрэг байх")
     prompt = (
@@ -68,7 +69,8 @@ def _analyze_live(user, n, memories, image_bytes, media_type, typed) -> dict:
         f"Санах ой: {'; '.join(memories) or 'байхгүй'}.\n"
         + (f"Хэрэглэгч бичсэн орцууд: {typed}\n" if typed else "")
         + "Зурагт (эсвэл жагсаалтад) байгаа орцуудыг тань. Тэдгээрийг голчлон ашигласан, оюутан 30 минутад хийж чадах "
-          "2–3 жор монголоор санал болго. Харшил/дургүй хоол байвал оруулахгүй. submit_recipes-ээр илгээ."
+          "2–3 жор санал болго. Харшил/дургүй хоол байвал оруулахгүй. submit_recipes-ээр илгээ.\n"
+        + f"Орц, жорын нэр, алхам, тайлбарыг бүгдийг {i18n.AI_LANG[i18n.norm(lang)]} хэлээр бич."
     )
     content = []
     if image_bytes:
@@ -91,27 +93,11 @@ def _analyze_live(user, n, memories, image_bytes, media_type, typed) -> dict:
     raise ValueError("submit_recipes дуудагдсангүй")
 
 
-def _mock(user: dict, typed: str) -> dict:
-    ingredients = [s.strip() for s in typed.replace("،", ",").split(",") if s.strip()] or [
-        "Өндөг", "Тахианы мах", "Будаа", "Брокколи", "Сонгино", "Вандуй"]
+def _mock(user: dict, typed: str, lang: str = "mn") -> dict:
+    lang = i18n.norm(lang)
+    ingredients = [s.strip() for s in typed.replace("،", ",").split(",") if s.strip()] or list(i18n.DEMO_INGREDIENTS[lang])
     lose = user.get("goal") == "lose"
-    return {
-        "ingredients": ingredients,
-        "recipes": [
-            {
-                "title": "Тахиатай брокколи шарсан будаа",
-                "kcal": 420 if lose else 560, "protein_g": 38, "time_min": 20,
-                "uses": ["Тахианы мах", "Брокколи", "Будаа", "Өндөг"], "extra": ["Шар буурцгийн сүмс"],
-                "steps": ["Тахианы махыг жижиглэн хайруулд 6 мин шарна", "Брокколи, сонгино нэмж 3 мин хутгана",
-                          "Хүйтэн будаа, өндөг нэмээд сүмсээр амтлана"],
-                "why": "Уураг ихтэй, нэг таваг хоолоор өдрийн уургийн гуравны нэгийг авна.",
-            },
-            {
-                "title": "Ногоотой өндөгний омлет",
-                "kcal": 310, "protein_g": 22, "time_min": 10,
-                "uses": ["Өндөг", "Сонгино", "Вандуй"], "extra": [],
-                "steps": ["3 өндгийг давстай хольж хутгана", "Сонгино, вандуйг 2 мин шарна", "Өндгөө хийж таглаад 4 мин болгоно"],
-                "why": "Хурдан, хямд, өглөөний дасгалын дараа тохиромжтой.",
-            },
-        ],
-    }
+    r1, r2 = (dict(r) for r in i18n.DEMO_RECIPES[lang])
+    r1.update(kcal=420 if lose else 560, protein_g=38, time_min=20)
+    r2.update(kcal=310, protein_g=22, time_min=10)
+    return {"ingredients": ingredients, "recipes": [r1, r2]}

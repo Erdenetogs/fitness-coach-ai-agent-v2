@@ -1,0 +1,43 @@
+{# Компьютерийн цэс (lg ≥ 1024px). Утсан дээр харагдахгүй — тэнд доод цэс ажиллана.
+   Доод хэсэгт coach-ийн дүрс level-ээрээ өсөж харагдана. #}
+{% from '_coach.html' import avatar with context %}
+{% from '_lang.html' import switcher with context %}
+<aside class="sidebar hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 bg-ink text-white px-4 py-6">
+  <a href="/" class="flex items-center gap-2.5 px-2 mb-8">
+    <span class="w-9 h-9 rounded-xl bg-track grid place-items-center"><span class="msr fill">bolt</span></span>
+    <span class="font-display font-semibold text-[17px]">FitCoach</span>
+  </a>
+
+  <nav aria-label="{{ t('nav.main_aria') }}" class="flex flex-col gap-1">
+    {% for key, href, icon, label in [('home','/','home','nav.home'),('workout','/workout','exercise','nav.workout'),('food','/food','restaurant','nav.food'),('progress','/progress','monitoring','nav.progress'),('profile','/profile','person','nav.profile')] %}
+    <a href="{{ href }}" class="side-link" {% if active == key %}aria-current="page"{% endif %}>
+      <span class="msr text-[22px]">{{ icon }}</span>{{ t(label) }}
+    </a>
+    {% endfor %}
+  </nav>
+
+  <a href="/chat" class="side-chat mt-4" {% if active == 'chat' %}aria-current="page"{% endif %}>
+    <span class="msr fill text-[22px]">forum</span>{{ t('nav.chat_cta') }}
+  </a>
+
+  {% if coach %}
+  <a href="/profile" class="coach-dock mt-auto" aria-label="{{ t('coach.card_aria', level=coach.level, xp=coach.xp, need=coach.need) }}">
+    <div class="flex items-center gap-3">
+      {{ avatar(64, coach.level) }}
+      <div class="min-w-0">
+        <p class="font-display font-semibold text-[15px] leading-tight">{{ t('coach.level', n=coach.level) }}</p>
+        <p class="text-white/60 text-[13px]">{{ coach.stage }}{% if coach.streak %} · <span class="text-pulse">{{ t('coach.streak_n', n=coach.streak) }}</span>{% endif %}</p>
+      </div>
+    </div>
+    <div class="h-1.5 rounded-full bg-white/15 mt-3 overflow-hidden" aria-hidden="true">
+      <div class="h-full rounded-full bg-mint" style="width: {{ coach.pct }}%"></div>
+    </div>
+    <p class="text-white/55 text-[12px] mt-1.5">{{ coach.xp }} / {{ coach.need }} XP</p>
+  </a>
+  {% endif %}
+
+  <div class="{{ 'mt-4' if coach else 'mt-auto' }} flex items-center justify-between gap-2 px-1">
+    {{ switcher(dark=True) }}
+    {% if not ai_live %}<span class="text-[11px] text-white/55" title="{{ t('demo.title') }}">{{ t('demo') }}</span>{% endif %}
+  </div>
+</aside>

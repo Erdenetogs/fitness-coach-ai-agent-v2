@@ -251,5 +251,60 @@ class SecurityAndValidationTest(unittest.TestCase):
         self.assertEqual(db.get_workout_history(uid, 1)[-1]["day"], date.today().isoformat())
 
 
+class LanguageTest(unittest.TestCase):
+    """Хэл солих товч ба 3 хэлний орчуулга."""
+
+    def test_switch_sets_cookie_and_translates_pages(self):
+        c, _ = new_client()
+        r = c.get("/lang/en?next=/workout", follow_redirects=False)
+        self.assertEqual((r.status_code, r.headers["location"]), (303, "/workout"))
+        page = c.get("/workout").text
+        self.assertIn('lang="en"', page)
+        self.assertIn("This week&#39;s workouts", page)
+        c.get("/lang/ko")
+        self.assertIn("이번 주 운동", c.get("/workout").text)
+
+    def test_unknown_language_and_unsafe_next_are_ignored(self):
+        c = TestClient(app)
+        r = c.get("/lang/xx?next=//evil.example.com", follow_redirects=False)
+        self.assertEqual(r.headers["location"], "/")
+        self.assertNotIn("fitcoach_lang", r.headers.get("set-cookie", ""))
+
+    def test_accept_language_picks_default(self):
+        r = TestClient(app).get("/onboarding", headers={"Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8"})
+        self.assertIn('lang="ko"', r.text)
+        self.assertIn('lang="mn"', TestClient(app).get("/onboarding").text)
+
+    def test_demo_coach_answers_in_chosen_language(self):
+        c, uid = new_client()
+        c.get("/lang/en")
+        r = c.post("/api/chat", json={"message": "My weight is 63.5 kg"}).json()
+        self.assertIn("Logged 63.5 kg", r["reply"])
+        self.assertEqual(db.get_weights(uid)[-1]["kg"], 63.5)
+        c.get("/lang/ko")
+        r = c.post("/api/chat", json={"message": "왼쪽 무릎이 아파"}).json()
+        self.assertTrue(r["plan_changed"])
+        self.assertIn("회복일", r["reply"])
+        # Өгөгдлийн санд Монголоор хадгалагдана — хэл солиход ч зөв харагдана
+        self.assertEqual(db.get_plan(uid)[planner.today_name()]["title"], "Сэргээх өдөр")
+
+    def test_api_errors_and_xp_follow_language(self):
+        c, _ = new_client()
+        c.get("/lang/ko")
+        self.assertEqual(c.post("/api/chat", json={"message": " "}).json()["error"], "메시지가 비어 있어요")
+        r = c.post("/api/recipes", json={"recipe": {"title": "오믈렛", "kcal": 300}}).json()
+        self.assertEqual(r["xp"]["reason"], "식사 기록")
+        self.assertEqual(r["xp"]["stage"], "씨앗")
+
+    def test_every_string_has_three_languages(self):
+        from app import i18n
+        for key, row in i18n.STRINGS.items():
+            with self.subTest(key=key):
+                self.assertEqual(len(row), 3)
+                self.assertTrue(all(row))
+        self.assertEqual(i18n.exercise("Суулт (squat)", "en"), "Squats")
+        self.assertEqual(i18n.weekday("Даваа", "ko"), "월요일")
+
+
 if __name__ == "__main__":
     unittest.main()

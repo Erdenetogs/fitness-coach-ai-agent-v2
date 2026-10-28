@@ -3,7 +3,7 @@ Claude ямар хэрэгсэл дуудахаа өөрөө шийднэ. Эн�
 бодит ажиллах функц, frontend-д харагдах "агентын алхам"-ын текстийг тодорхойлно."""
 import json
 
-from app import db, planner, xp
+from app import db, i18n, planner, xp
 
 TOOLS = [
     {
@@ -83,25 +83,30 @@ TOOLS = [
     },
 ]
 
-STEP_LABELS = {
-    "get_user_profile": ("person_search", "Профайлыг уншсан"),
-    "get_workout_plan": ("calendar_month", "Дасгалын төлөвлөгөөг шалгасан"),
-    "get_workout_history": ("history", "Дасгалын түүхийг шалгасан"),
-    "get_progress": ("monitoring", "Жингийн явцыг шалгасан"),
-    "update_workout_day": ("edit_calendar", "Төлөвлөгөөг өөрчилсөн"),
-    "log_weight": ("scale", "Жинг бүртгэсэн"),
-    "save_memory": ("bookmark_added", "Санах ойд хадгалсан"),
+STEP_ICONS = {
+    "get_user_profile": "person_search",
+    "get_workout_plan": "calendar_month",
+    "get_workout_history": "history",
+    "get_progress": "monitoring",
+    "update_workout_day": "edit_calendar",
+    "log_weight": "scale",
+    "save_memory": "bookmark_added",
 }
 
 
-def step_for(name: str, args: dict) -> dict:
-    icon, text = STEP_LABELS.get(name, ("build", name))
+def step_for(name: str, args: dict, lang: str = "mn") -> dict:
+    """Frontend-д харагдах "агентын алхам" — хэрэглэгчийн сонгосон хэлээр."""
+    icon = STEP_ICONS.get(name, "build")
     if name == "update_workout_day":
-        text = f"{args.get('day', '')} гарагийн дасгалыг өөрчилсөн"
+        text = i18n.t("step.update_workout_day", lang, day=i18n.weekday(args.get("day", ""), lang))
     elif name == "log_weight":
-        text = f"Жинг бүртгэсэн: {args.get('kg')} кг"
+        text = i18n.t("step.log_weight", lang, kg=args.get("kg"))
     elif name == "save_memory":
-        text = f"Санах ойд хадгалсан: {args.get('fact', '')}"
+        text = i18n.t("step.save_memory", lang, fact=args.get("fact", ""))
+    elif name in STEP_ICONS:
+        text = i18n.t(f"step.{name}", lang)
+    else:
+        text = name
     return {"icon": icon, "text": text}
 
 

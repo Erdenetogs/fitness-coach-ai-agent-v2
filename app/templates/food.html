@@ -1,46 +1,54 @@
 {% extends 'base.html' %}
-{% block title %}Хоол{% endblock %}
+{% block title %}{{ t('page.food') }}{% endblock %}
 {% block content %}
-<header class="px-5 pt-8 pb-4">
-  <h1 class="font-display text-[24px] font-semibold">Хөргөгчнөөс жор</h1>
-  <p class="text-ink-2 text-sm mt-1">Өдрийн зорилт: <span class="num font-semibold text-ink">{{ "{:,}".format(nutrition.kcal) }}</span> ккал · уураг {{ nutrition.protein_g }} г</p>
+<header class="px-5 pt-8 pb-4 lg:pt-12 lg:pb-6">
+  <h1 class="font-display text-[24px] lg:text-[32px] font-semibold">{{ t('fd.h1') }}</h1>
+  <p class="text-ink-2 text-sm lg:text-base mt-1">{{ t('fd.target') }}: <span class="num font-semibold text-ink">{{ "{:,}".format(nutrition.kcal) }}</span> {{ t('unit.kcal') }} · {{ t('fd.protein', n=nutrition.protein_g) }}</p>
 </header>
 
-<main class="px-5 space-y-4">
-  <form id="fridge-form" class="card p-4 space-y-3">
-    <label for="photo" id="drop" class="block rounded-2xl border-2 border-dashed border-line bg-paper cursor-pointer overflow-hidden">
-      <div id="drop-empty" class="py-9 text-center">
-        <span class="msr text-[38px] text-track">photo_camera</span>
-        <p class="font-semibold mt-1">Хөргөгчнийхөө зургийг авах</p>
-        <p class="text-ink-2 text-[13px]">эсвэл зургийн сангаас сонгох (5MB хүртэл)</p>
+{# Компьютер дээр: зүүн баганад зураг/орц, баруун баганад жорууд #}
+<main class="px-5 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-6 lg:items-start">
+  <div class="space-y-4 lg:col-span-5 lg:sticky lg:top-8">
+    <form id="fridge-form" class="card p-4 lg:p-5 space-y-3">
+      <label for="photo" id="drop" class="block rounded-2xl border-2 border-dashed border-line bg-paper cursor-pointer overflow-hidden">
+        <div id="drop-empty" class="py-9 lg:py-14 text-center">
+          <span class="msr text-[38px] lg:text-[44px] text-track">photo_camera</span>
+          <p class="font-semibold mt-1">{{ t('fd.photo') }}</p>
+          <p class="text-ink-2 text-[13px]">{{ t('fd.photo_sub') }}</p>
+        </div>
+        <img id="preview" alt="{{ t('fd.photo_alt') }}" class="hidden w-full max-h-64 lg:max-h-80 object-cover">
+      </label>
+      <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" class="sr-only">
+
+      <div>
+        <label for="ingredients" class="label">{{ t('fd.or_type') }}</label>
+        <input id="ingredients" name="ingredients" class="field" placeholder="{{ t('fd.ph') }}">
       </div>
-      <img id="preview" alt="Сонгосон зураг" class="hidden w-full max-h-64 object-cover">
-    </label>
-    <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" class="sr-only">
+      <button id="analyze" class="btn btn-primary w-full"><span class="msr">auto_awesome</span>{{ t('fd.find') }}</button>
+    </form>
 
-    <div>
-      <label for="ingredients" class="label">Эсвэл орцоо бичих</label>
-      <input id="ingredients" name="ingredients" class="field" placeholder="өндөг, тахиа, будаа, лууван">
+    {% if saved %}
+    <section>
+      <h2 class="font-semibold mb-2">{{ t('fd.saved') }}</h2>
+      <ul class="space-y-2">
+        {% for r in saved[:6] %}
+        <li class="row p-3.5 flex items-center gap-3">
+          <span class="msr text-mint">bookmark</span>
+          <span class="flex-1 font-medium">{{ r.title }}</span>
+          <span class="text-ink-2 text-[13px]">{{ r.kcal }} {{ t('unit.kcal') }}</span>
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+  </div>
+
+  <section id="result" class="hidden lg:block space-y-3 lg:col-span-7" aria-live="polite">
+    <div class="hidden lg:flex card p-10 flex-col items-center text-center text-ink-2">
+      <span class="msr text-[44px] text-line">restaurant_menu</span>
+      <p class="mt-2 max-w-xs">{{ t('fd.empty') }}</p>
     </div>
-    <button id="analyze" class="btn btn-primary w-full"><span class="msr">auto_awesome</span>Жор олох</button>
-  </form>
-
-  <section id="result" class="hidden space-y-3" aria-live="polite"></section>
-
-  {% if saved %}
-  <section>
-    <h2 class="font-semibold mb-2">Хадгалсан жорууд</h2>
-    <ul class="space-y-2">
-      {% for r in saved[:6] %}
-      <li class="row p-3.5 flex items-center gap-3">
-        <span class="msr text-mint">bookmark</span>
-        <span class="flex-1 font-medium">{{ r.title }}</span>
-        <span class="text-ink-2 text-[13px]">{{ r.kcal }} ккал</span>
-      </li>
-      {% endfor %}
-    </ul>
   </section>
-  {% endif %}
 </main>
 {% endblock %}
 
@@ -51,12 +59,13 @@
   const empty = document.getElementById("drop-empty");
   const result = document.getElementById("result");
   const btn = document.getElementById("analyze");
+  const btnHtml = btn.innerHTML;
   let lastRecipes = [];
 
   photo.addEventListener("change", () => {
     const f = photo.files[0];
     if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { toast("Зураг 5MB-аас бага байх ёстой"); photo.value = ""; return; }
+    if (f.size > 5 * 1024 * 1024) { toast(t("js.fd_big")); photo.value = ""; return; }
     preview.src = URL.createObjectURL(f);
     preview.classList.remove("hidden"); empty.classList.add("hidden");
   });
@@ -67,7 +76,7 @@
     if (photo.files[0]) fd.append("photo", photo.files[0]);
     fd.append("ingredients", document.getElementById("ingredients").value);
     btn.disabled = true;
-    btn.innerHTML = '<span class="msr">hourglass_top</span>Агент зургийг шинжилж байна…';
+    btn.innerHTML = `<span class="msr">hourglass_top</span>${escapeHtml(t("js.fd_busy"))}`;
     result.classList.remove("hidden");
     result.innerHTML = `<div class="card p-4 typing flex gap-1.5"><span></span><span></span><span></span></div>`;
     try {
@@ -75,12 +84,12 @@
       lastRecipes = data.recipes;
       result.innerHTML = renderResult(data);
       result.querySelectorAll("[data-save]").forEach((b) => b.addEventListener("click", () => save(b)));
-      result.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (window.innerWidth < 1024) result.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (err) {
       result.innerHTML = `<p class="card p-4 text-pulse">${escapeHtml(err.message)}</p>`;
     } finally {
       btn.disabled = false;
-      btn.innerHTML = '<span class="msr">auto_awesome</span>Жор олох';
+      btn.innerHTML = btnHtml;
     }
   });
 
@@ -90,27 +99,27 @@
     const num = (x) => (Number.isFinite(Number(x)) ? Number(x) : "–");
     const chips = list(d.ingredients).map((i) => `<span class="text-[13px] bg-mint-soft text-[#0e7a53] rounded-full px-2.5 py-1">${escapeHtml(i)}</span>`).join("");
     const cards = list(d.recipes).map((r, i) => `
-      <article class="card p-4">
+      <article class="card p-4 lg:p-5">
         <div class="flex items-start justify-between gap-3">
           <h3 class="font-display font-semibold text-[17px] leading-snug">${escapeHtml(r.title)}</h3>
-          <button data-save="${i}" class="btn btn-ghost py-1.5 px-2.5 text-sm flex-none" aria-label="Жорыг хадгалах (+15 XP)" title="Хадгалах · +15 XP"><span class="msr text-[20px]">bookmark_add</span></button>
+          <button data-save="${i}" class="btn btn-ghost py-1.5 px-2.5 text-sm flex-none" aria-label="${escapeHtml(t("js.fd_save"))}" title="${escapeHtml(t("js.fd_save_title"))}"><span class="msr text-[20px]">bookmark_add</span></button>
         </div>
         <div class="flex gap-4 mt-2 text-[13px] text-ink-2">
-          <span><b class="num text-ink">${num(r.kcal)}</b> ккал</span><span><b class="num text-ink">${num(r.protein_g)}</b> г уураг</span><span><b class="num text-ink">${num(r.time_min)}</b> мин</span>
+          <span><b class="num text-ink">${num(r.kcal)}</b> ${escapeHtml(t("js.kcal"))}</span><span><b class="num text-ink">${num(r.protein_g)}</b> ${escapeHtml(t("js.protein_g"))}</span><span><b class="num text-ink">${num(r.time_min)}</b> ${escapeHtml(t("js.min"))}</span>
         </div>
         <p class="text-[13.5px] mt-2">${escapeHtml(r.why || "")}</p>
-        ${list(r.extra).length ? `<p class="text-[13px] text-ink-2 mt-1">Нэмж авах: ${list(r.extra).map(escapeHtml).join(", ")}</p>` : ""}
+        ${list(r.extra).length ? `<p class="text-[13px] text-ink-2 mt-1">${escapeHtml(t("js.fd_extra"))} ${list(r.extra).map(escapeHtml).join(", ")}</p>` : ""}
         <details class="mt-3">
-          <summary class="cursor-pointer text-track font-medium text-sm">Хийх арга</summary>
+          <summary class="cursor-pointer text-track font-medium text-sm">${escapeHtml(t("js.fd_how"))}</summary>
           <ol class="list-decimal pl-5 mt-2 space-y-1 text-[14px]">${list(r.steps).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
         </details>
       </article>`).join("");
     return `
-      <div class="card p-4">
+      <div class="card p-4 lg:p-5">
         ${renderSteps(d.agent_steps)}
-        <p class="text-[13px] font-semibold text-ink-2 mb-2">Олдсон орц</p>
+        <p class="text-[13px] font-semibold text-ink-2 mb-2">${escapeHtml(t("js.fd_found"))}</p>
         <div class="flex flex-wrap gap-1.5">${chips}</div>
-        ${d.demo ? '<p class="text-[12px] text-ink-2 mt-3">Демо горим: API түлхүүр тохируулбал зурагнаас бодит орц таньна.</p>' : ""}
+        ${d.demo ? `<p class="text-[12px] text-ink-2 mt-3">${escapeHtml(t("js.fd_demo"))}</p>` : ""}
       </div>${cards}`;
   }
 
@@ -119,7 +128,7 @@
       const data = await api("/api/recipes", { json: { recipe: lastRecipes[+b.dataset.save] } });
       b.innerHTML = '<span class="msr fill text-[20px]">bookmark_added</span>';
       b.disabled = true;
-      if (data.xp) showXp(data.xp); else toast("Жорыг хадгаллаа");
+      if (data.xp) showXp(data.xp); else toast(t("js.fd_saved"));
     } catch (e) { toast(e.message); }
   }
 </script>
