@@ -1,9 +1,10 @@
 """SQLite өгөгдлийн сан. Python-д суурилагдсан sqlite3 ашиглана — нэмэлт суулгах зүйлгүй."""
 import json
 import os
+import secrets
 import sqlite3
 from contextlib import contextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 DB_PATH = os.getenv("FITCOACH_DB", "fitcoach.db")
 
@@ -13,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     age INTEGER, gender TEXT, height_cm REAL, weight_kg REAL,
     goal TEXT, level TEXT, days_per_week INTEGER, equipment TEXT,
-    created_at TEXT
+    created_at TEXT, token TEXT
 );
 CREATE TABLE IF NOT EXISTS plans (
     user_id INTEGER PRIMARY KEY, plan_json TEXT NOT NULL, updated_at TEXT
@@ -72,20 +73,28 @@ def init_db():
         os.makedirs(folder, exist_ok=True)
     with conn() as c:
         c.executescript(SCHEMA)
+        # Хуучин fitcoach.db-д token багана байхгүй бол нэмнэ
+        cols = {r["name"] for r in c.execute("PRAGMA table_info(users)")}
+        if "token" not in cols:
+            c.execute("ALTER TABLE users ADD COLUMN token TEXT")
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_token ON users(token)")
 
 
 # ---------- Хэрэглэгч ----------
-def create_user(data: dict) -> int:
+def create_user(data: dict) -> tuple[int, str]:
+    """Шинэ хэрэглэгч үүсгээд (id, token) буцаана. Token-ийг cookie-д хадгална —
+    id-г шууд cookie-д хийвэл хэн ч тоог нь сольж бусдын мэдээллийг харж чадна."""
+    token = secrets.token_urlsafe(32)
     with conn() as c:
         cur = c.execute(
             """INSERT INTO users (name, age, gender, height_cm, weight_kg, goal, level,
-               days_per_week, equipment, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+               days_per_week, equipment, created_at, token) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (data["name"], data["age"], data["gender"], data["height_cm"], data["weight_kg"],
-             data["goal"], data["level"], data["days_per_week"], data["equipment"], now()),
+             data["goal"], data["level"], data["days_per_week"], data["equipment"], now(), token),
         )
         uid = cur.lastrowid
         c.execute("INSERT INTO weights (user_id, day, kg) VALUES (?,?,?)", (uid, today(), data["weight_kg"]))
-        return uid
+        return uid, token
 
 
 def get_user(uid) -> dict | None:
@@ -93,6 +102,14 @@ def get_user(uid) -> dict | None:
         return None
     with conn() as c:
         row = c.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_token(token: str | None) -> dict | None:
+    if not token:
+        return None
+    with conn() as c:
+        row = c.execute("SELECT * FROM users WHERE token=?", (token,)).fetchone()
         return dict(row) if row else None
 
 
@@ -159,12 +176,15 @@ def get_done_today(uid: int) -> set[str]:
 
 
 def get_workout_history(uid: int, days: int = 14) -> list[dict]:
+    # SQLite-ийн date('now') нь UTC цаг ашигладаг тул Солонгост өглөө 9-өөс өмнө нэг өдрөөр зөрдөг.
+    # today()-тэй ижил орон нутгийн огноогоор тооцно.
+    since = (date.today() - timedelta(days=days)).isoformat()
     with conn() as c:
         rows = c.execute(
             "SELECT day, COUNT(*) AS done_count, GROUP_CONCAT(exercise, ', ') AS exercises "
-            "FROM workout_logs WHERE user_id=? AND done=1 AND day >= date('now', ?) "
+            "FROM workout_logs WHERE user_id=? AND done=1 AND day >= ? "
             "GROUP BY day ORDER BY day",
-            (uid, f"-{days} days"),
+            (uid, since),
         ).fetchall()
         return [dict(r) for r in rows]
 

@@ -10,7 +10,9 @@ try:
 except ImportError:
     pass
 
-from fastapi import FastAPI, File, Form, Request, UploadFile
+import json
+
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -28,11 +30,31 @@ templates.env.globals.update(GOALS=planner.GOALS, LEVELS=planner.LEVELS, EQUIPME
 
 db.init_db()
 
-COOKIE = "fitcoach_uid"
+COOKIE = "fitcoach_token"
 
 
 def current_user(request: Request):
-    return db.get_user(request.cookies.get(COOKIE))
+    return db.get_user_by_token(request.cookies.get(COOKIE))
+
+
+def validate_profile(name: str, age: int, gender: str, height_cm: float, goal: str, level: str,
+                     days_per_week: int, equipment: str, weight_kg: float | None = None) -> dict:
+    """Формын утгыг серверт дахин шалгана (browser-ийн min/max-ийг тойрч илгээж болдог)."""
+    name = name.strip()[:40]
+    if not name:
+        raise HTTPException(400, "Нэрээ оруулна уу")
+    if (gender not in ("male", "female") or goal not in planner.GOALS
+            or level not in planner.LEVELS or equipment not in planner.EQUIPMENT):
+        raise HTTPException(400, "Сонголт буруу байна")
+    if not (14 <= age <= 80 and 120 <= height_cm <= 230 and 2 <= days_per_week <= 6):
+        raise HTTPException(400, "Нас 14–80, өндөр 120–230 см, долоо хоногт 2–6 өдөр байх ёстой")
+    data = dict(name=name, age=age, gender=gender, height_cm=height_cm, goal=goal, level=level,
+                days_per_week=days_per_week, equipment=equipment)
+    if weight_kg is not None:
+        if not 30 <= weight_kg <= 250:
+            raise HTTPException(400, "Жин 30–250 кг хооронд байх ёстой")
+        data["weight_kg"] = weight_kg
+    return data
 
 
 def page(request: Request, name: str, active: str, **ctx):
@@ -59,16 +81,15 @@ def onboarding_submit(
     height_cm: float = Form(...), weight_kg: float = Form(...), goal: str = Form(...),
     level: str = Form(...), days_per_week: int = Form(...), equipment: str = Form(...),
 ):
-    data = dict(name=name.strip()[:40], age=age, gender=gender, height_cm=height_cm, weight_kg=weight_kg,
-                goal=goal, level=level, days_per_week=days_per_week, equipment=equipment)
-    uid = db.create_user(data)
+    data = validate_profile(name, age, gender, height_cm, goal, level, days_per_week, equipment, weight_kg)
+    uid, token = db.create_user(data)
     db.save_plan(uid, planner.build_plan(data))
     db.add_message(uid, "assistant",
                    f"Сайн уу, {data['name']}! Би чиний FitCoach. {days_per_week} өдрийн төлөвлөгөөг чинь бэлдлээ. "
                    "Дасгал солих, жингээ бүртгэх, хоолны талаар асуух бол энд бичээрэй.",
                    [{"icon": "edit_calendar", "text": "Долоо хоногийн төлөвлөгөө үүсгэсэн"}])
     resp = RedirectResponse("/", status_code=303)
-    resp.set_cookie(COOKIE, str(uid), max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax")
+    resp.set_cookie(COOKIE, token, max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax")
     return resp
 
 
@@ -135,8 +156,7 @@ def profile_save(
     user, redirect = need_user(request)
     if redirect:
         return redirect
-    data = dict(name=name.strip()[:40], age=age, gender=gender, height_cm=height_cm, goal=goal, level=level,
-                days_per_week=days_per_week, equipment=equipment)
+    data = validate_profile(name, age, gender, height_cm, goal, level, days_per_week, equipment)
     db.update_user(user["id"], data)
     if rebuild == "yes":
         db.save_plan(user["id"], planner.build_plan({**user, **data}))
@@ -218,6 +238,8 @@ def api_save_recipe(body: RecipeIn, request: Request):
     user, err = _api_user(request)
     if err:
         return err
+    if not body.recipe.get("title") or len(json.dumps(body.recipe, ensure_ascii=False)) > 8000:
+        return JSONResponse({"error": "Жорын мэдээлэл буруу байна"}, status_code=400)
     db.save_recipe(user["id"], body.recipe)
     title = str(body.recipe.get("title", ""))[:80]
     return {"ok": True, "xp": xp.award(user["id"], "meal", f"{db.today()}:{title}")}

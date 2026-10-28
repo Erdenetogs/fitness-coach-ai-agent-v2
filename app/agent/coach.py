@@ -102,11 +102,12 @@ def _chat_mock(uid: int, message: str) -> dict:
         return run_tool(uid, name, args)
 
     # 1) Жин бүртгэх: "жин 68.5", "68 кг боллоо"
-    m = re.search(r"(\d{2,3}(?:[.,]\d)?)\s*(кг|kg)", text) or (
-        re.search(r"(\d{2,3}(?:[.,]\d)?)", text) if "жин" in text else None
-    )
-    if m:
-        kg = float(m.group(1).replace(",", "."))
+    #    "жин хасахад 30 хоног" гэх мэт өөр тоог жин гэж андуурахгүйн тулд нэгжийг шалгана.
+    m = re.search(r"(\d{2,3}(?:[.,]\d)?)\s*(кг|kg)", text)
+    if not m and "жин" in text:
+        m = re.search(r"(\d{2,3}(?:[.,]\d)?)(?!\s*(?:хоног|өдөр|мин|удаа|сет|ккал|калори|см|%|\d))", text)
+    kg = float(m.group(1).replace(",", ".")) if m else None
+    if kg is not None and 30 <= kg <= 250:
         use("log_weight", {"kg": kg})
         prog = use("get_progress")
         diff = prog["change_kg"]

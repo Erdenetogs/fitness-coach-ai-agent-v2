@@ -25,7 +25,7 @@
     </div>
     <div class="grid grid-cols-3 gap-2.5">
       <div><label class="label" for="age">Нас</label><input class="field" id="age" name="age" type="number" min="14" max="80" value="{{ user.age }}" required></div>
-      <div><label class="label" for="height_cm">Өндөр</label><input class="field" id="height_cm" name="height_cm" type="number" step="0.1" value="{{ '%g'|format(user.height_cm) }}" required></div>
+      <div><label class="label" for="height_cm">Өндөр</label><input class="field" id="height_cm" name="height_cm" type="number" step="0.1" min="120" max="230" value="{{ '%g'|format(user.height_cm) }}" required></div>
       <div><label class="label" for="gender">Хүйс</label>
         <select class="field" id="gender" name="gender">
           <option value="male" {{ 'selected' if user.gender == 'male' }}>Эр</option>

@@ -48,8 +48,9 @@
   let weights = {{ weights|tojson }};
   const history = {{ history|tojson }};
 
+  // Chart.js CDN ачаалагдаагүй (интернэтгүй) үед ч жин бүртгэх форм ажиллах ёстой
   const ctx = document.getElementById("chart");
-  const chart = new Chart(ctx, {
+  const chart = typeof Chart === "undefined" ? null : new Chart(ctx, {
     type: "line",
     data: { labels: weights.map((w) => w.day.slice(5)), datasets: [{
       data: weights.map((w) => w.kg), borderColor: "#2d5bff", backgroundColor: "rgba(45,91,255,.08)",
@@ -59,13 +60,16 @@
                 y: { grid: { color: "#eef1f6" }, ticks: { color: "#5b6680" }, grace: 1 } } },
   });
 
+  // Орон нутгийн огноо (YYYY-MM-DD). toISOString() нь UTC тул Солонгост өглөө 9-өөс өмнө өчигдрийг өгдөг.
+  const localDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
   // 28 өдрийн дулааны зураг
   const heat = document.getElementById("heat");
   const doneSet = new Set(history.map((h) => h.day));
   const today = new Date();
   for (let i = 27; i >= 0; i--) {
     const d = new Date(today); d.setDate(today.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
+    const key = localDay(d);
     const on = doneSet.has(key);
     heat.insertAdjacentHTML("beforeend",
       `<div title="${key}${on ? ": дасгал хийсэн" : ""}" class="aspect-square rounded-md ${on ? "bg-mint" : "bg-paper"} ${i === 0 ? "ring-2 ring-pulse" : ""}"></div>`);
@@ -77,9 +81,11 @@
     try {
       const data = await api("/api/weight", { json: { kg } });
       weights = data.weights;
-      chart.data.labels = weights.map((w) => w.day.slice(5));
-      chart.data.datasets[0].data = weights.map((w) => w.kg);
-      chart.update();
+      if (chart) {
+        chart.data.labels = weights.map((w) => w.day.slice(5));
+        chart.data.datasets[0].data = weights.map((w) => w.kg);
+        chart.update();
+      }
       document.getElementById("chart-hint").classList.toggle("hidden", weights.length > 1);
       document.getElementById("cur-kg").textContent = weights.at(-1).kg;
       const ch = weights.length > 1 ? weights.at(-1).kg - weights[0].kg : 0;
