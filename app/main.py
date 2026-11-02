@@ -2,6 +2,7 @@
 Асаах:  uvicorn app.main:app --reload   →  http://127.0.0.1:8000
 API туршилт:  http://127.0.0.1:8000/docs
 """
+import re
 from pathlib import Path
 
 try:
@@ -17,6 +18,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from jinja2 import pass_context
+from markupsafe import Markup, escape
 from pydantic import BaseModel
 
 from app import db, i18n, planner, xp
@@ -26,6 +28,15 @@ BASE = Path(__file__).parent
 app = FastAPI(title="FitCoach AI Agent")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
+
+
+def _md(text) -> Markup:
+    """AI хариуны **тод** бичгийг HTML болгоно. Эхлээд escape хийдэг тул аюулгүй."""
+    safe = str(escape(text or ""))
+    return Markup(re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", safe))
+
+
+templates.env.filters["md"] = _md
 templates.env.globals.update(GOALS=planner.GOALS, LEVELS=planner.LEVELS, EQUIPMENT=planner.EQUIPMENT,
                              WEEKDAYS=planner.WEEKDAYS, LANGS=i18n.LANGS, LANG_SHORT=i18n.SHORT)
 

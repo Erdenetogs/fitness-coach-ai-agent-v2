@@ -51,3 +51,8 @@ function showXp(xp) {
     ? t("js.levelup", { level: xp.level, stage: xp.stage })
     : t("js.xp", { gained: xp.gained, reason: xp.reason }));
 }
+
+/** AI хариу: HTML-ийг escape хийгээд **тод** бичгийг <strong> болгоно. */
+function formatReply(text) {
+  return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
