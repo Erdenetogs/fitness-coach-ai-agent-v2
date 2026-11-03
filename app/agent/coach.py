@@ -7,6 +7,7 @@
   4. Claude эцсийн хариугаа өгөх хүртэл давтана (дээд тал нь MAX_TURNS)
 Дуудсан хэрэгсэл бүр "agent_steps" болж frontend-д харагдана.
 """
+import logging
 import re
 
 from app import db, i18n, planner
@@ -14,6 +15,7 @@ from app.agent import llm
 from app.agent.tools import TOOLS, as_text, run_tool, step_for
 
 MAX_TURNS = 6
+log = logging.getLogger("fitcoach.agent")
 
 SYSTEM = """Чи бол FitCoach — их сургуулийн оюутнуудад зориулсан хувийн фитнесс дасгалжуулагч AI агент.
 
@@ -66,6 +68,7 @@ def chat(uid: int, message: str, lang: str = "mn") -> dict:
         try:
             result = _chat_live(uid, message, lang)
         except Exception as e:  # API алдаа гарсан ч сайт унахгүй
+            log.exception("Claude API алдаа (uid=%s)", uid)  # Render → Logs хэсэгт бүтэн шалтгаан харагдана
             result = _chat_mock(uid, message, lang)
             result["reply"] += "\n\n" + i18n.t("m.ai_error", lang, e=type(e).__name__)
     else:
@@ -76,27 +79,76 @@ def chat(uid: int, message: str, lang: str = "mn") -> dict:
 
 def _chat_live(uid: int, message: str, lang: str = "mn") -> dict:
     client = llm.get_client()
+    messages = _history(uid, message)
+    try:
+        return _loop(client, uid, messages, lang)
+    except Exception as e:
+        # Хуучин яриа (жишээ нь демо хариу) асуудал үүсгэсэн байж магадгүй → зөвхөн одоогийн мессежээр дахин оролдоно
+        retry_ok = getattr(e, "fitcoach_no_tools_ran", False)
+        if type(e).__name__ != "BadRequestError" or not retry_ok or len(messages) == 1:
+            raise
+        log.warning("BadRequest, түүхгүйгээр дахин оролдож байна: %s", e)
+        return _loop(client, uid, [{"role": "user", "content": message}], lang)
+
+
+def _history(uid: int, message: str) -> list[dict]:
+    """Сүүлийн яриаг Claude-д өгөх хэлбэрт оруулна.
+    Өмнөх хариунд агент ямар хэрэгсэл ажиллуулсныг [Хийсэн үйлдэл] гэж нэмдэг — эс бөгөөс Claude
+    "би үнэндээ өөрчлөөгүй" гэж буруу дүгнэдэг."""
     history = db.get_messages(uid, limit=12)[:-1]  # сүүлийнх нь одоогийн мессеж
-    messages = [{"role": m["role"], "content": m["content"]} for m in history if m["content"]]
+    messages = []
+    for m in history:
+        text = (m["content"] or "").strip()
+        if m["role"] == "assistant" and m.get("agent_steps"):
+            done = "; ".join(s.get("text", "") for s in m["agent_steps"])
+            text = f"{text}\n\n[Хийсэн үйлдэл: {done}]"
+        if not text:
+            continue
+        if messages and messages[-1]["role"] == m["role"]:  # дараалсан ижил role-ийг нэгтгэнэ
+            messages[-1]["content"] += "\n\n" + text
+        else:
+            messages.append({"role": m["role"], "content": text})
     # Claude-д эхний мессеж заавал user байх ёстой
     while messages and messages[0]["role"] != "user":
         messages.pop(0)
-    messages.append({"role": "user", "content": message})
+    if messages and messages[-1]["role"] == "user":
+        messages[-1]["content"] += "\n\n" + message
+    else:
+        messages.append({"role": "user", "content": message})
+    return messages
 
+
+def _clean(content) -> list:
+    """Claude-ийн хариуны блокуудыг буцааж илгээх хэлбэрт оруулна (хоосон текст блок 400 алдаа өгдөг)."""
+    out = []
+    for b in content:
+        if b.type == "text":
+            if b.text.strip():
+                out.append({"type": "text", "text": b.text})
+        elif b.type == "tool_use":
+            out.append({"type": "tool_use", "id": b.id, "name": b.name, "input": b.input or {}})
+    return out
+
+
+def _loop(client, uid: int, messages: list[dict], lang: str) -> dict:
     steps, plan_changed = [], False
     for _ in range(MAX_TURNS):
-        resp = client.messages.create(
-            model=llm.MODEL,
-            max_tokens=1024,
-            system=SYSTEM.format(memories=_memories_text(uid), language=i18n.AI_LANG[i18n.norm(lang)]),
-            tools=TOOLS,
-            messages=messages,
-        )
+        try:
+            resp = client.messages.create(
+                model=llm.MODEL,
+                max_tokens=1024,
+                system=SYSTEM.format(memories=_memories_text(uid), language=i18n.AI_LANG[i18n.norm(lang)]),
+                tools=TOOLS,
+                messages=messages,
+            )
+        except Exception as e:
+            e.fitcoach_no_tools_ran = not steps  # хэрэгсэл ажиллаагүй бол дахин оролдоход аюулгүй
+            raise
         if resp.stop_reason != "tool_use":
             reply = "".join(b.text for b in resp.content if b.type == "text").strip()
             return {"reply": reply or "…", "agent_steps": steps, "plan_changed": plan_changed}
 
-        messages.append({"role": "assistant", "content": resp.content})
+        messages.append({"role": "assistant", "content": _clean(resp.content)})
         results = []
         for block in resp.content:
             if block.type != "tool_use":
