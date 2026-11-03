@@ -306,5 +306,13 @@ class LanguageTest(unittest.TestCase):
         self.assertEqual(i18n.weekday("Даваа", "ko"), "월요일")
 
 
+
+class ChatFormatTest(unittest.TestCase):
+    def test_bold_rendered_and_html_escaped(self):
+        from app.main import _md
+        out = str(_md("Target **1,380 kcal** <script>x</script>"))
+        self.assertIn("<strong>1,380 kcal</strong>", out)
+        self.assertNotIn("<script>", out)
+
 if __name__ == "__main__":
     unittest.main()

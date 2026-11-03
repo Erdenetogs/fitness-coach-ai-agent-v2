@@ -22,7 +22,7 @@
           {% else %}
           <div class="max-w-[88%] lg:max-w-[75%]">
             {% if m.agent_steps %}<div class="space-y-1 mb-2">{% for s in m.agent_steps %}<div class="step"><span class="msr">{{ s.icon }}</span>{{ s.text }}</div>{% endfor %}</div>{% endif %}
-            <p class="bubble-ai px-4 py-2.5 whitespace-pre-line">{{ m.content }}</p>
+            <p class="bubble-ai px-4 py-2.5 whitespace-pre-line">{{ m.content | md }}</p>
           </div>
           {% endif %}
         {% endfor %}
@@ -60,7 +60,7 @@
   }
   function addAi(text, steps, planChanged) {
     const link = planChanged ? `<a href="/workout" class="inline-flex items-center gap-1 text-track text-sm font-medium mt-2"><span class="msr text-[18px]">calendar_month</span>${escapeHtml(t("js.ch_plan"))}</a>` : "";
-    log.insertAdjacentHTML("beforeend", `<div class="max-w-[88%] lg:max-w-[75%]">${renderSteps(steps)}<p class="bubble-ai px-4 py-2.5 whitespace-pre-line">${escapeHtml(text)}</p>${link}</div>`);
+    log.insertAdjacentHTML("beforeend", `<div class="max-w-[88%] lg:max-w-[75%]">${renderSteps(steps)}<p class="bubble-ai px-4 py-2.5 whitespace-pre-line">${formatReply(text)}</p>${link}</div>`);
   }
 
   async function send(text) {
