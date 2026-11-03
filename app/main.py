@@ -2,6 +2,7 @@
 Асаах:  uvicorn app.main:app --reload   →  http://127.0.0.1:8000
 API туршилт:  http://127.0.0.1:8000/docs
 """
+import hashlib
 import re
 from pathlib import Path
 
@@ -30,6 +31,20 @@ app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 
 
+def _static_version() -> str:
+    """static/ доторх файлуудын агуулгаас гаргасан богино hash.
+    CSS/JS-ийн холбоос дээр ?v=... болж залгагдана. Файл өөрчлөгдөхөд холбоос өөрчлөгдөж,
+    браузер хуучин кэшээ биш шинэ файлыг татна (deploy-ийн дараа "formatReply is not defined" гарахгүй)."""
+    h = hashlib.sha256()
+    for f in sorted((BASE / "static").rglob("*")):
+        if f.is_file():
+            h.update(f.read_bytes())
+    return h.hexdigest()[:8]
+
+
+STATIC_V = _static_version()
+
+
 def _md(text) -> Markup:
     """AI хариуны **тод** бичгийг HTML болгоно. Эхлээд escape хийдэг тул аюулгүй."""
     safe = str(escape(text or ""))
@@ -38,7 +53,8 @@ def _md(text) -> Markup:
 
 templates.env.filters["md"] = _md
 templates.env.globals.update(GOALS=planner.GOALS, LEVELS=planner.LEVELS, EQUIPMENT=planner.EQUIPMENT,
-                             WEEKDAYS=planner.WEEKDAYS, LANGS=i18n.LANGS, LANG_SHORT=i18n.SHORT)
+                             WEEKDAYS=planner.WEEKDAYS, LANGS=i18n.LANGS, LANG_SHORT=i18n.SHORT,
+                             STATIC_V=STATIC_V)
 
 
 # ---- Template-д хэрэглэх орчуулгын функцууд (хуудасны хэлийг context-оос авна) ----

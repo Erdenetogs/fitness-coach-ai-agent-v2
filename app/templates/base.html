@@ -17,7 +17,7 @@
       track: "#2d5bff", "track-soft": "#e4eaff", pulse: "#ff6b4a", mint: "#17a673", "mint-soft": "#ddf4ea"
     } } } };
   </script>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v={{ STATIC_V }}">
 </head>
 <body class="min-h-screen">
 {% block body %}
@@ -54,7 +54,7 @@
 <div id="toast" role="status" aria-live="polite"
      class="fixed z-50 left-1/2 -translate-x-1/2 bottom-28 lg:bottom-10 bg-ink text-white text-sm px-4 py-2.5 rounded-xl opacity-0 pointer-events-none transition-opacity"></div>
 <script>window.T = {{ js_strings|tojson }};</script>
-<script src="/static/js/common.js"></script>
+<script src="/static/js/common.js?v={{ STATIC_V }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

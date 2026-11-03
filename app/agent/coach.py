@@ -33,6 +33,12 @@ SYSTEM = """Чи бол FitCoach — их сургуулийн оюутнууд�
 
 Хэрэглэгчийн тухай санах ойд байгаа баримтууд:
 {memories}
+
+LANGUAGE (most important rule): write your entire reply in {language} only.
+Tool results and earlier messages may contain Mongolian (day names, plan titles, exercise names).
+Translate them into {language}; when a tool gives *_in_user_language fields, use those exact names.
+Never mix languages and never write Mongolian words in Latin letters.
+When calling tools, still pass the Mongolian day name (e.g. "Пүрэв") as the day argument.
 """
 
 # Демо горимын түлхүүр үгс — Монгол, Англи, Солонгос
@@ -147,7 +153,7 @@ def _loop(client, uid: int, messages: list[dict], lang: str) -> dict:
         for block in resp.content:
             if block.type != "tool_use":
                 continue
-            out = run_tool(uid, block.name, block.input or {})
+            out = run_tool(uid, block.name, block.input or {}, lang)
             steps.append(step_for(block.name, block.input or {}, lang))
             plan_changed |= block.name == "update_workout_day"
             results.append({"type": "tool_result", "tool_use_id": block.id, "content": as_text(out)})
