@@ -337,5 +337,63 @@ class DemoUserTest(unittest.TestCase):
         a.post("/api/weight", json={"kg": 70})
         self.assertNotEqual(b.get("/api/progress").json()["weights"][-1]["kg"], 70)
 
+
+class AgentHistoryTest(unittest.TestCase):
+    """Жинхэнэ Claude дээр олдсон алдаанууд: түүхэнд хийсэн үйлдэл алга, BadRequest."""
+
+    def _fake(self, behaviour):
+        calls = []
+
+        class BadRequestError(Exception):
+            pass
+
+        class Messages:
+            def create(self, **kw):
+                calls.append(kw)
+                return behaviour(len(calls), kw, BadRequestError)
+
+        saved = llm._client
+        llm._client = NS(messages=Messages())
+        self.addCleanup(setattr, llm, "_client", saved)
+        return calls
+
+    def test_history_tells_claude_which_actions_ran(self):
+        calls = self._fake(lambda n, kw, E: NS(stop_reason="end_turn", content=[NS(type="text", text="ok")]))
+        c, uid = new_client()
+        db.add_message(uid, "user", "өвдөг өвдөж байна")
+        db.add_message(uid, "assistant", "Өөрчиллөө.", [{"icon": "x", "text": "Даваа гарагийн дасгалыг өөрчилсөн"}])
+        c.post("/api/chat", json={"message": "баярлалаа"})
+        msgs = calls[0]["messages"]
+        self.assertTrue(any("Хийсэн үйлдэл: Даваа гарагийн дасгалыг өөрчилсөн" in m["content"]
+                            for m in msgs if m["role"] == "assistant"))
+        roles = [m["role"] for m in msgs]
+        self.assertEqual(roles[0], "user")
+        self.assertTrue(all(a != b for a, b in zip(roles, roles[1:])), roles)
+
+    def test_bad_request_retries_without_history(self):
+        def behaviour(n, kw, E):
+            if n == 1:
+                raise E("history broke it")
+            return NS(stop_reason="end_turn", content=[NS(type="text", text="дахин оролдоод болсон")])
+        calls = self._fake(behaviour)
+        c, uid = new_client()
+        db.add_message(uid, "user", "өмнөх асуулт")
+        db.add_message(uid, "assistant", "өмнөх")
+        r = c.post("/api/chat", json={"message": "сайн уу"}).json()
+        self.assertEqual(r["reply"], "дахин оролдоод болсон")
+        self.assertEqual(len(calls[1]["messages"]), 1)
+
+    def test_empty_text_blocks_not_sent_back(self):
+        def behaviour(n, kw, E):
+            if n == 1:
+                return NS(stop_reason="tool_use", content=[NS(type="text", text=""),
+                                                           NS(type="tool_use", id="t1", name="get_workout_plan", input={})])
+            return NS(stop_reason="end_turn", content=[NS(type="text", text="ok")])
+        calls = self._fake(behaviour)
+        c, _ = new_client()
+        c.post("/api/chat", json={"message": "төлөвлөгөө"})
+        assistant = calls[1]["messages"][-2]
+        self.assertEqual([b["type"] for b in assistant["content"]], ["tool_use"])
+
 if __name__ == "__main__":
     unittest.main()
