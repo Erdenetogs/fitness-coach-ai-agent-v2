@@ -314,5 +314,28 @@ class ChatFormatTest(unittest.TestCase):
         self.assertIn("<strong>1,380 kcal</strong>", out)
         self.assertNotIn("<script>", out)
 
+
+class DemoUserTest(unittest.TestCase):
+    def test_demo_login_has_history(self):
+        c = TestClient(app)
+        r = c.post("/demo", follow_redirects=False)
+        self.assertEqual(r.status_code, 303)
+        for path in ["/", "/workout", "/food", "/progress", "/profile", "/chat"]:
+            with self.subTest(path=path):
+                self.assertEqual(c.get(path).status_code, 200)
+        st = c.get("/api/xp").json()
+        self.assertGreaterEqual(st["level"], 3)
+        self.assertGreaterEqual(st["streak"], 5)
+        prog = c.get("/api/progress").json()
+        self.assertGreaterEqual(len(prog["weights"]), 7)
+        self.assertGreaterEqual(len(prog["history"]), 8)
+        self.assertLess(prog["weights"][-1]["kg"], prog["weights"][0]["kg"])
+
+    def test_each_demo_click_is_separate_user(self):
+        a, b = TestClient(app), TestClient(app)
+        a.post("/demo"); b.post("/demo")
+        a.post("/api/weight", json={"kg": 70})
+        self.assertNotEqual(b.get("/api/progress").json()["weights"][-1]["kg"], 70)
+
 if __name__ == "__main__":
     unittest.main()

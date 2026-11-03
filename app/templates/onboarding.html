@@ -128,6 +128,12 @@
         <button type="button" id="ob-next" class="btn btn-primary flex-1">{{ t('btn.continue') }}</button>
       </div>
     </form>
+
+    <form method="post" action="/demo" class="mt-6 pt-5 border-t border-line text-center">
+      <p class="text-ink-2 text-[13px] mb-2">{{ t('ob.demo_or') }}</p>
+      <button class="btn btn-ghost w-full"><span class="msr">play_circle</span>{{ t('ob.demo_btn') }}</button>
+      <p class="text-ink-2 text-[12.5px] mt-2">{{ t('ob.demo_sub') }}</p>
+    </form>
   </div>
 </div>
 {% endblock %}

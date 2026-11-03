@@ -21,7 +21,7 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 from pydantic import BaseModel
 
-from app import db, i18n, planner, xp
+from app import db, demo, i18n, planner, xp
 from app.agent import coach, fridge, llm
 
 BASE = Path(__file__).parent
@@ -125,6 +125,15 @@ def onboarding_submit(
     db.save_plan(uid, planner.build_plan(data))
     db.add_message(uid, "assistant", i18n.t("m.greeting", lang, name=data["name"], d=days_per_week),
                    [{"icon": "edit_calendar", "text": i18n.t("step.plan_created", lang)}])
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(COOKIE, token, max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax")
+    return resp
+
+
+@app.post("/demo")
+def demo_login(request: Request):
+    """Илтгэл, туршилтад: 3 долоо хоногийн түүхтэй демо хэрэглэгч үүсгээд нэвтрүүлнэ."""
+    _, token = demo.create(i18n.from_request(request))
     resp = RedirectResponse("/", status_code=303)
     resp.set_cookie(COOKIE, token, max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax")
     return resp
