@@ -34,8 +34,8 @@ CHAT = {
          [("bookmark_added", "Санах ойд хадгалсан: Зүүн өвдөг заримдаа өвддөг"),
           ("calendar_month", "Дасгалын төлөвлөгөөг шалгасан"), ("edit_calendar", "Кардио өдрийг өөрчилсөн")]),
         ("user", "Энэ долоо хоногийн явц хэр байна?", None),
-        ("assistant", "Сүүлийн 7 хоногт 4 өдөр дасгал хийж, жин эхлэлээс **−2.2 кг** буурсан байна. "
-                      "Хэмнэл маш сайн — 5 өдөр дараалан идэвхтэй байна!",
+        ("assistant", "Сүүлийн 7 хоногт 4 өдөр дасгал хийж, жин эхлэлээс **−2.1 кг** буурсан байна. "
+                      "Хэмнэл маш сайн, ингээд үргэлжлүүлээрэй!",
          [("history", "Дасгалын түүхийг шалгасан"), ("monitoring", "Жингийн явцыг шалгасан")]),
     ],
     "en": [
@@ -45,8 +45,8 @@ CHAT = {
          [("bookmark_added", "Saved to memory: Left knee sometimes hurts"),
           ("calendar_month", "Checked the workout plan"), ("edit_calendar", "Changed the cardio day")]),
         ("user", "How's my progress this week?", None),
-        ("assistant", "You trained 4 days in the last week and you're **−2.2 kg** from your start. "
-                      "Great rhythm — a 5-day streak!",
+        ("assistant", "You trained 4 days in the last week and you're **−2.1 kg** from your start. "
+                      "Great rhythm, keep it going!",
          [("history", "Checked workout history"), ("monitoring", "Checked weight progress")]),
     ],
     "ko": [
@@ -56,7 +56,7 @@ CHAT = {
          [("bookmark_added", "기억에 저장: 왼쪽 무릎이 가끔 아픔"),
           ("calendar_month", "운동 계획 확인"), ("edit_calendar", "유산소 날 변경")]),
         ("user", "이번 주 진행 상황 어때요?", None),
-        ("assistant", "지난 7일 동안 4일 운동했고 시작보다 **−2.2 kg** 줄었어요. 리듬이 아주 좋아요 — 5일 연속이에요!",
+        ("assistant", "지난 7일 동안 4일 운동했고 시작보다 **−2.1 kg** 줄었어요. 리듬이 아주 좋아요, 계속해요!",
          [("history", "운동 기록 확인"), ("monitoring", "체중 변화 확인")]),
     ],
 }
