@@ -110,22 +110,34 @@ def step_for(name: str, args: dict, lang: str = "mn") -> dict:
     return {"icon": icon, "text": text}
 
 
-def run_tool(uid: int, name: str, args: dict) -> dict:
+def _plan_in_language(plan: dict, lang: str) -> list[dict]:
+    """Төлөвлөгөөг хэрэглэгчийн хэлээр — сайт дээр харагддагтай яг ижил нэрээр.
+    Ингэснээр AI англи/солонгос хариундаа монгол үг холихгүй, сайттай ижил нэр хэрэглэнэ."""
+    return [{"day_key": d, "day": i18n.weekday(d, lang), "title": i18n.day_title(plan.get(d, {}), lang),
+             "exercises": [i18n.exercise(e.get("name", ""), lang) for e in plan.get(d, {}).get("exercises", [])]}
+            for d in planner.WEEKDAYS]
+
+
+def run_tool(uid: int, name: str, args: dict, lang: str = "mn") -> dict:
     """Хэрэгслийг ажиллуулж, Claude-д буцаах үр дүнг dict хэлбэрээр өгнө."""
     user = db.get_user(uid) or {}
     if name == "get_user_profile":
         return {
             "name": user.get("name"), "age": user.get("age"), "gender": user.get("gender"),
             "height_cm": user.get("height_cm"), "weight_kg": user.get("weight_kg"),
-            "goal": planner.GOALS.get(user.get("goal"), user.get("goal")),
-            "level": planner.LEVELS.get(user.get("level"), user.get("level")),
+            "goal": i18n.t(f"goal.{user.get('goal')}", lang),
+            "level": i18n.t(f"level.{user.get('level')}", lang),
             "days_per_week": user.get("days_per_week"),
-            "equipment": planner.EQUIPMENT.get(user.get("equipment"), user.get("equipment")),
+            "equipment": i18n.t(f"equip.{user.get('equipment')}", lang),
             "nutrition": planner.nutrition(user), "bmi": planner.bmi(user),
-            "coach_level": xp.status(uid),
+            "coach_level": xp.status(uid, lang),
         }
     if name == "get_workout_plan":
-        return {"today": planner.today_name(), "plan": db.get_plan(uid)}
+        result = {"today": planner.today_name(), "plan": db.get_plan(uid)}
+        if lang != "mn":
+            result["today_in_user_language"] = i18n.weekday(result["today"], lang)
+            result["plan_in_user_language"] = _plan_in_language(result["plan"], lang)
+        return result
     if name == "get_workout_history":
         try:
             days = int(args.get("days") or 14)

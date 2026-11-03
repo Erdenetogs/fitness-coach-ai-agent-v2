@@ -166,6 +166,19 @@ class LiveAgentLoopTest(unittest.TestCase):
         # Хэрэгслийн үр дүнг Claude-д буцааж өгсөн эсэх
         self.assertEqual(self.calls[1]["messages"][-1]["content"][0]["type"], "tool_result")
 
+    def test_english_user_gets_plan_in_english(self):
+        """Англи хэрэглэгчид AI монгол үг холихгүйн тулд: заавар + төлөвлөгөөний англи нэрс."""
+        c, _ = new_client()
+        c.get("/lang/en")
+        c.post("/api/chat", json={"message": "make Monday easier"})
+        self.assertIn("write your entire reply in English only", self.calls[0]["system"])
+        # get_workout_plan (t1)-ийн үр дүн. messages жагсаалт дуудлага бүрт өсдөг тул id-аар нь хайна.
+        tool_result = next(part["content"] for m in self.calls[-1]["messages"] if isinstance(m["content"], list)
+                           for part in m["content"] if isinstance(part, dict) and part.get("tool_use_id") == "t1")
+        self.assertIn("plan_in_user_language", tool_result)
+        self.assertIn('"day": "Monday"', tool_result)
+        self.assertIn("Push-ups", tool_result)
+
 
 class XpTest(unittest.TestCase):
     def test_level_math(self):
@@ -336,6 +349,48 @@ class DemoUserTest(unittest.TestCase):
         a.post("/demo"); b.post("/demo")
         a.post("/api/weight", json={"kg": 70})
         self.assertNotEqual(b.get("/api/progress").json()["weights"][-1]["kg"], 70)
+
+    def test_demo_chat_matches_demo_data(self):
+        """Урьдчилан бичсэн чат өгөгдөлтэйгээ таарах ёстой — эс бөгөөс жинхэнэ AI зөрүүг олоод
+        "өмнө нь буруу хэлсэн" гэж хариулдаг."""
+        c = TestClient(app)
+        c.post("/demo")
+        uid = db.get_user_by_token(c.cookies.get("fitcoach_token"))["id"]
+        plan = db.get_plan(uid)
+        cardio = [d for d in planner.WEEKDAYS if plan[d]["focus"] == "cardio"]
+        self.assertEqual(len(cardio), 1)
+        names = [e["name"] for e in plan[cardio[0]]["exercises"]]
+        for jumping in ("Үсрэлт (jumping jack)", "Бёрпи", "Уулчин (mountain climber)"):
+            self.assertNotIn(jumping, names)  # чатад "үсрэлт, бёрпиг хасав" гэсэн
+
+        prog = c.get("/api/progress").json()
+        change = round(prog["weights"][-1]["kg"] - prog["weights"][0]["kg"], 1)
+        week_ago = (date.today() - timedelta(days=7)).isoformat()
+        trained = len([h for h in db.get_workout_history(uid, 7) if h["day"] >= week_ago])
+        streak = c.get("/api/xp").json()["streak"]
+        progress_msg = [m for m in db.get_messages(uid) if m["role"] == "assistant"][-1]["content"]
+        self.assertIn(f"{change:+.1f}".replace("-", "−") + " кг", progress_msg)
+        self.assertIn(f"{trained} өдөр дасгал", progress_msg)
+        self.assertIn(f"{streak} өдөр дараалан", progress_msg)
+
+    def test_demo_in_korean(self):
+        c = TestClient(app)
+        c.get("/lang/ko")
+        c.post("/demo")
+        page = c.get("/chat").text
+        self.assertIn("데모 학생", c.get("/profile").text)
+        self.assertIn("목요일 운동 변경", page)
+        self.assertIn("닭고기 브로콜리 볶음밥", c.get("/food").text)
+
+
+class StaticCacheTest(unittest.TestCase):
+    def test_static_links_carry_version(self):
+        """CSS/JS холбоос дээр файлын hash байх ёстой — deploy-ийн дараа браузер хуучин JS ашиглахгүй."""
+        from app.main import STATIC_V
+        page = TestClient(app).get("/onboarding").text
+        self.assertRegex(STATIC_V, r"^[0-9a-f]{8}$")
+        self.assertIn(f"/static/js/common.js?v={STATIC_V}", page)
+        self.assertIn(f"/static/css/app.css?v={STATIC_V}", page)
 
 if __name__ == "__main__":
     unittest.main()
