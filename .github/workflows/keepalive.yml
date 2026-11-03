@@ -1,0 +1,18 @@
+# Render-ийн үнэгүй сервер 15 минут хүсэлтгүй бол унтаж, өгөгдлийн сан хоосордог.
+# 10 минут тутам /healthz руу хандаж сэрүүн байлгана.
+# Render-ийн үнэгүй хязгаар сард 750 цаг — нэг сервисийг байнга асаалттай байлгахад (≤744 цаг) хүрэлцэнэ.
+# Анхаар: GitHub-ийн scheduled workflow заримдаа 10–20 минут хоцордог. Илүү найдвартай байлгах бол
+# cron-job.org дээр мөн адил 5 минут тутмын шалгалт нэмж болно (DEPLOY.md).
+name: Keep Render awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: curl -fsS --max-time 120 https://fitcoach-nl0o.onrender.com/healthz || echo "Сервер хариу өгсөнгүй (сэрж байгаа байж магадгүй)"

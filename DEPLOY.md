@@ -7,6 +7,12 @@
 
 Env: `ANTHROPIC_API_KEY`, `CLAUDE_MODEL=claude-haiku-5-5`, `PYTHON_VERSION=3.12.7`. Илтгэлийн өмнө `CLAUDE_MODEL`-ийг `claude-sonnet-5-5` болгож болно.
 
+## Өгөгдөл устахаас сэргийлэх
+Үнэгүй сервер **15 минут хүсэлтгүй бол унтаж, `fitcoach.db` устдаг** (дахин байршуулах үед ч мөн адил).
+1. **Сэрүүн байлгах:** `.github/workflows/keepalive.yml` 10 минут тутам `/healthz` руу хандана. Илүү найдвартай болгох бол **cron-job.org** → Create cronjob → URL `https://fitcoach-nl0o.onrender.com/healthz`, Every 5 minutes.
+2. **Демо хэрэглэгч:** бүртгэлийн хуудасны **"Бүртгүүлэхгүйгээр демо хэрэглэгчээр үзэх"** товч 3 долоо хоногийн түүхтэй хэрэглэгч үүсгэнэ (`app/demo.py`). Илтгэлд үүнийг ашиглана.
+3. **Usability test-ийн үеэр Manual Deploy бүү хий** — дахин байршуулахад бүх өгөгдөл устна.
+
 ## 1. Нэг удаагийн тохиргоо (Blueprint арга — repo эзэмшигч Render-д эрх өгсөн үед)
 1. **render.com** → GitHub-аараа бүртгүүлнэ
 2. **New → Blueprint** → `Erdenetogs/fitness-coach-ai-agent-v2` сонгоно
