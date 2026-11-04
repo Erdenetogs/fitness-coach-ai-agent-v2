@@ -22,8 +22,6 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 from pydantic import BaseModel
 
-import sqlite3
-
 from app import auth, db, demo, i18n, planner, xp
 from app.agent import coach, fridge, llm
 
@@ -150,7 +148,7 @@ def onboarding_submit(
         raise HTTPException(409, i18n.t("err.email_taken", lang))
     try:
         uid, token = db.create_user({**data, "email": email, "password_hash": auth.hash_password(password)})
-    except sqlite3.IntegrityError:  # яг зэрэг ижил имэйлээр бүртгүүлсэн
+    except db.IntegrityError:  # яг зэрэг ижил имэйлээр бүртгүүлсэн
         raise HTTPException(409, i18n.t("err.email_taken", lang))
     db.save_plan(uid, planner.build_plan(data))
     db.add_message(uid, "assistant", i18n.t("m.greeting", lang, name=data["name"], d=days_per_week),

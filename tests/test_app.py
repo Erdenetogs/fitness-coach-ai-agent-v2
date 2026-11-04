@@ -1,6 +1,7 @@
 """FitCoach автомат тест.
 
 Ажиллуулах (repo-гийн үндсэн хавтаснаас):  python -m unittest -v
+Postgres дээр шалгах:  DATABASE_URL=postgresql://... python -m unittest -v  (хоосон өгөгдлийн сан ашигла)
 API түлхүүр шаардлагагүй — агентыг демо горимоор болон "хуурамч Claude"-аар шалгана.
 """
 import os
@@ -216,13 +217,11 @@ class XpTest(unittest.TestCase):
 
     def test_streak_counts_consecutive_days(self):
         _, uid = new_client()
-        con = sqlite3.connect(db.DB_PATH)
-        for i in [0, 1, 2, 4]:  # 3 хоног дараалан + 1 тасарсан өдөр
-            d = (date.today() - timedelta(days=i)).isoformat()
-            con.execute("INSERT INTO xp_events (user_id, day, kind, amount, key) VALUES (?,?,?,?,?)",
-                        (uid, d, "chat", 5, d))
-        con.commit()
-        con.close()
+        with db.conn() as con:  # SQLite, Postgres хоёуланд ажиллана
+            for i in [0, 1, 2, 4]:  # 3 хоног дараалан + 1 тасарсан өдөр
+                d = (date.today() - timedelta(days=i)).isoformat()
+                con.execute("INSERT INTO xp_events (user_id, day, kind, amount, key) VALUES (?,?,?,?,?)",
+                            (uid, d, "chat", 5, d))
         self.assertEqual(xp.streak(uid), 3)
 
 
@@ -448,6 +447,7 @@ class LoginTest(unittest.TestCase):
                 self.assertIn(word, c.get("/login").text)
                 self.assertIn('href="/login"', c.get("/onboarding").text)
 
+    @unittest.skipIf(db.IS_PG, "SQLite файлын шилжилт")
     def test_old_database_gets_new_columns(self):
         """Нэвтрэх систем нэмэгдэхээс өмнөх fitcoach.db ажилласаар байх ёстой."""
         path = os.path.join(_TMP, "old.db")

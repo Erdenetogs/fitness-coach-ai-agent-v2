@@ -28,7 +28,7 @@ uvicorn app.main:app --reload
 ```
 app/
   main.py            Хуудас ба API route-ууд (FastAPI)
-  db.py              SQLite өгөгдлийн сан (fitcoach.db файл үүснэ)
+  db.py              Өгөгдлийн сан: локал дээр SQLite (fitcoach.db), DATABASE_URL байвал PostgreSQL (Neon)
   planner.py         Анхны дасгалын төлөвлөгөө, калорийн тооцоо (дүрэмд суурилсан)
   agent/
     llm.py           Claude API холболт

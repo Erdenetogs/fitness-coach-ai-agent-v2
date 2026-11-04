@@ -16,3 +16,5 @@ services:
         value: claude-sonnet-5-5
       - key: ANTHROPIC_API_KEY
         sync: false   # Render-ийн dashboard дээр гараар оруулна. GitHub-д БҮҮ бич.
+      - key: DATABASE_URL
+        sync: false   # Neon-ий холбох хаяг (нууц үг агуулдаг). GitHub-д БҮҮ бич.

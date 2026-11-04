@@ -131,8 +131,8 @@ def create(lang: str = "mn") -> tuple[int, str]:
     with db.conn() as c:
         c.execute("DELETE FROM weights WHERE user_id=?", (uid,))
         c.executemany("INSERT INTO weights (user_id, day, kg) VALUES (?,?,?)", rows_w)
-        c.executemany("INSERT OR IGNORE INTO workout_logs (user_id, day, exercise, done) VALUES (?,?,?,?)", rows_log)
-        c.executemany("INSERT OR IGNORE INTO xp_events (user_id, day, kind, amount, key) VALUES (?,?,?,?,?)", rows_xp)
+        c.executemany("INSERT INTO workout_logs (user_id, day, exercise, done) VALUES (?,?,?,?) ON CONFLICT DO NOTHING", rows_log)
+        c.executemany("INSERT INTO xp_events (user_id, day, kind, amount, key) VALUES (?,?,?,?,?) ON CONFLICT DO NOTHING", rows_xp)
         c.executemany("INSERT INTO recipes (user_id, recipe_json, created_at) VALUES (?,?,?)",
                       [(uid, json.dumps(r, ensure_ascii=False), db.now()) for r in recipes])
 
