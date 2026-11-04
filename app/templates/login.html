@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% from '_coach.html' import avatar with context %}
+{% from '_lang.html' import switcher with context %}
+{% block title %}{{ t('page.login') }}{% endblock %}
+{% block body %}
+{# Бүртгэлийн хуудастай ижил бүтэц: компьютер дээр зүүн талд танилцуулга, баруун талд маягт. #}
+<div class="lg:grid lg:grid-cols-2 lg:min-h-screen">
+  <aside class="hidden lg:flex flex-col justify-between bg-ink text-white p-12 xl:p-16">
+    <div class="flex items-center gap-2.5">
+      <span class="w-9 h-9 rounded-xl bg-track grid place-items-center"><span class="msr fill">bolt</span></span>
+      <span class="font-display font-semibold text-[17px]">FitCoach</span>
+    </div>
+    <div class="max-w-md">
+      <div class="flex items-end gap-2 mb-8" aria-hidden="true">
+        {% for lv, cls in [(1, 'opacity-40'), (3, 'opacity-70'), (5, 'opacity-100')] %}<div class="{{ cls }}">{{ avatar(56 + lv * 14, lv) }}</div>{% endfor %}
+      </div>
+      <h2 class="font-display text-[34px] xl:text-[40px] leading-[1.15] font-semibold">{{ t('ob.tagline') }}</h2>
+      <p class="text-white/65 text-lg mt-4">{{ t('ob.tagline_sub') }}</p>
+    </div>
+    <p class="text-white/40 text-sm">Capstone Design 2026</p>
+  </aside>
+
+  <div class="mx-auto w-full max-w-md min-h-screen flex flex-col px-5 pt-10 pb-8 lg:justify-center">
+    <div class="flex items-center justify-between gap-2 mb-10">
+      <div class="flex items-center gap-2 lg:invisible">
+        <div class="w-9 h-9 rounded-xl bg-ink text-white grid place-items-center"><span class="msr fill">bolt</span></div>
+        <span class="font-display font-semibold">FitCoach</span>
+      </div>
+      {{ switcher() }}
+    </div>
+
+    <form method="post" action="/login" class="space-y-5">
+      <div>
+        <h1 class="font-display text-[26px] leading-tight font-semibold">{{ t('login.h1') }}</h1>
+        <p class="text-ink-2 mt-2">{{ t('login.sub') }}</p>
+      </div>
+      <div>
+        <label class="label" for="email">{{ t('f.email') }}</label>
+        <input class="field" id="email" name="email" type="email" required maxlength="120" autocomplete="username"
+               inputmode="email" value="{{ email or '' }}" {% if not email %}autofocus{% endif %}>
+      </div>
+      <div>
+        <label class="label" for="password">{{ t('f.password') }}</label>
+        <input class="field" id="password" name="password" type="password" required maxlength="128"
+               autocomplete="current-password" {% if email %}autofocus{% endif %}>
+      </div>
+      {% if error %}<p class="text-sm text-pulse" role="alert">{{ error }}</p>{% endif %}
+      <button class="btn btn-primary w-full">{{ t('login.btn') }}</button>
+    </form>
+
+    <p class="text-center text-[14px] mt-6">{{ t('login.no_account') }} <a href="/onboarding" class="text-track font-semibold">{{ t('login.signup') }}</a></p>
+
+    <form method="post" action="/demo" class="mt-5 pt-5 border-t border-line text-center">
+      <p class="text-ink-2 text-[13px] mb-2">{{ t('ob.demo_or') }}</p>
+      <button class="btn btn-ghost w-full"><span class="msr">play_circle</span>{{ t('ob.demo_btn') }}</button>
+      <p class="text-ink-2 text-[12.5px] mt-2">{{ t('ob.demo_sub') }}</p>
+    </form>
+  </div>
+</div>
+{% endblock %}

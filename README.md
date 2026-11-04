@@ -36,6 +36,7 @@ app/
     coach.py         Чатын агент (tool-use loop) + демо горим
     fridge.py        Зураг → орц → жор (vision + structured output)
   i18n.py            Монгол / English / 한국어 орчуулга, хэл сонгох
+  auth.py            Нэвтрэх: нууц үгийн hash (scrypt), имэйл шалгах, олон буруу оролдлогыг хаах
   templates/         Jinja2 хуудсууд (base.html + 7 хуудас, _sidebar.html = компьютерийн цэс)
   static/css/app.css Дизайн токенууд (Figma-тай ижил)
   static/js/common.js fetch, toast, агентын алхам, t() орчуулга

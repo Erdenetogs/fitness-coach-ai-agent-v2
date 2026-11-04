@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     age INTEGER, gender TEXT, height_cm REAL, weight_kg REAL,
     goal TEXT, level TEXT, days_per_week INTEGER, equipment TEXT,
-    created_at TEXT, token TEXT
+    created_at TEXT, token TEXT, email TEXT, password_hash TEXT
 );
 CREATE TABLE IF NOT EXISTS plans (
     user_id INTEGER PRIMARY KEY, plan_json TEXT NOT NULL, updated_at TEXT
@@ -77,7 +77,12 @@ def init_db():
         cols = {r["name"] for r in c.execute("PRAGMA table_info(users)")}
         if "token" not in cols:
             c.execute("ALTER TABLE users ADD COLUMN token TEXT")
+        # Нэвтрэх систем нэмэгдэхээс өмнөх fitcoach.db-д имэйл, нууц үгийн багана нэмнэ
+        for col in ("email", "password_hash"):
+            if col not in cols:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_token ON users(token)")
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
 
 
 # ---------- Хэрэглэгч ----------
@@ -88,9 +93,11 @@ def create_user(data: dict) -> tuple[int, str]:
     with conn() as c:
         cur = c.execute(
             """INSERT INTO users (name, age, gender, height_cm, weight_kg, goal, level,
-               days_per_week, equipment, created_at, token) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+               days_per_week, equipment, created_at, token, email, password_hash)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (data["name"], data["age"], data["gender"], data["height_cm"], data["weight_kg"],
-             data["goal"], data["level"], data["days_per_week"], data["equipment"], now(), token),
+             data["goal"], data["level"], data["days_per_week"], data["equipment"], now(), token,
+             data.get("email"), data.get("password_hash")),
         )
         uid = cur.lastrowid
         c.execute("INSERT INTO weights (user_id, day, kg) VALUES (?,?,?)", (uid, today(), data["weight_kg"]))
@@ -110,6 +117,14 @@ def get_user_by_token(token: str | None) -> dict | None:
         return None
     with conn() as c:
         row = c.execute("SELECT * FROM users WHERE token=?", (token,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_email(email: str | None) -> dict | None:
+    if not email:
+        return None
+    with conn() as c:
+        row = c.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         return dict(row) if row else None
 
 

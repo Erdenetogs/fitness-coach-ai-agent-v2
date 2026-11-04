@@ -3,6 +3,16 @@
 Бүх API нь `fitcoach_token` cookie-оор хэрэглэгчийг таньдаг (onboarding бөглөхөд тавигдана). Cookie-д хэрэглэгчийн id биш, санамсаргүй token хадгалагдана. Cookie байхгүй эсвэл буруу бол `401 {"error": "..."}`.
 Алдааны үед бүх API `{"error": "Монгол тайлбар"}` буцаана.
 
+## Бүртгэл ба нэвтрэх (form, cookie тавина)
+| Зам | Талбарууд | Амжилттай | Алдаа |
+|---|---|---|---|
+| `POST /onboarding` | name, age, gender, height_cm, weight_kg, goal, level, days_per_week, equipment, **email**, **password** (8–128) | `303 → /` + cookie | `400` буруу утга, `409` имэйл бүртгэлтэй — `{"detail": "тайлбар"}` |
+| `POST /login` | email, password | `303 → /` + cookie | `401` имэйл/нууц үг буруу, `429` 5 удаа буруу → 15 мин хаагдана (хуудсаа алдаатай нь буцаана) |
+| `POST /demo` | — | `303 → /` + cookie (демо хэрэглэгч, нэвтрэх имэйлгүй) | — |
+| `GET /logout` | — | cookie устгаад `303 → /login` | — |
+
+Имэйлийг жижиг үсгээр хадгална. Нууц үгийг `scrypt`-ээр hash хийж `users.password_hash`-д хадгална (`app/auth.py`).
+
 ## Агентын алхам (`agent_steps`)
 ```json
 [{"icon": "edit_calendar", "text": "Бямба гарагийн дасгалыг өөрчилсөн"}]

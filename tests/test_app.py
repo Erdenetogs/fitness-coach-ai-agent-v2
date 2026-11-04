@@ -22,13 +22,18 @@ from app.agent import llm  # noqa: E402
 from app.main import app  # noqa: E402
 
 PROFILE = dict(name="Тест", age=21, gender="female", height_cm=165, weight_kg=62,
-               goal="lose", level="beginner", days_per_week=6, equipment="none")
+               goal="lose", level="beginner", days_per_week=6, equipment="none", password="secret-pass-1")
+_emails = iter(range(10 ** 6))
+
+
+def fresh_email() -> str:
+    return f"user{next(_emails)}@test.mn"
 
 
 def new_client(**overrides) -> tuple[TestClient, int]:
     """Шинэ хэрэглэгч бүртгүүлээд (client, user_id) буцаана."""
     c = TestClient(app)
-    r = c.post("/onboarding", data={**PROFILE, **overrides}, follow_redirects=False)
+    r = c.post("/onboarding", data={**PROFILE, "email": fresh_email(), **overrides}, follow_redirects=False)
     assert r.status_code == 303
     token = r.cookies.get("fitcoach_token") or c.cookies.get("fitcoach_token")
     return c, db.get_user_by_token(token)["id"]
@@ -236,7 +241,8 @@ class SecurityAndValidationTest(unittest.TestCase):
     def test_onboarding_rejects_bad_values(self):
         for bad in [dict(goal="hack"), dict(age=5), dict(weight_kg=999), dict(days_per_week=9), dict(name="  ")]:
             with self.subTest(bad=bad):
-                r = TestClient(app).post("/onboarding", data={**PROFILE, **bad}, follow_redirects=False)
+                r = TestClient(app).post("/onboarding", data={**PROFILE, "email": fresh_email(), **bad},
+                                         follow_redirects=False)
                 self.assertEqual(r.status_code, 400)
 
     def test_recipe_needs_title(self):
@@ -381,6 +387,86 @@ class DemoUserTest(unittest.TestCase):
         self.assertIn("데모 학생", c.get("/profile").text)
         self.assertIn("목요일 운동 변경", page)
         self.assertIn("닭고기 브로콜리 볶음밥", c.get("/food").text)
+
+
+class LoginTest(unittest.TestCase):
+    """Имэйл + нууц үгээр бүртгүүлж, өөр төхөөрөмжөөс (шинэ client) нэвтрэх."""
+
+    def test_signup_then_login_from_another_device(self):
+        email = fresh_email()
+        c1, uid = new_client(email=email.upper())  # том үсгээр бичсэн ч жижиг болгож хадгална
+        row = db.get_user(uid)
+        self.assertEqual(row["email"], email)
+        self.assertNotIn("secret-pass-1", row["password_hash"])  # нууц үгийг шууд хадгалахгүй
+        self.assertTrue(row["password_hash"].startswith("scrypt$"))
+
+        c1.get("/logout")
+        self.assertEqual(c1.get("/", follow_redirects=False).status_code, 303)
+
+        c2 = TestClient(app)  # өөр утас
+        r = c2.post("/login", data={"email": f"  {email} ", "password": "secret-pass-1"}, follow_redirects=False)
+        self.assertEqual((r.status_code, r.headers["location"]), (303, "/"))
+        self.assertIn("Тест", c2.get("/").text)
+        self.assertEqual(c2.get("/api/xp").status_code, 200)
+
+    def test_wrong_password_and_unknown_email_look_the_same(self):
+        email = fresh_email()
+        new_client(email=email)
+        bad_pw = TestClient(app).post("/login", data={"email": email, "password": "wrong-password"})
+        no_user = TestClient(app).post("/login", data={"email": fresh_email(), "password": "wrong-password"})
+        self.assertEqual(bad_pw.status_code, 401)
+        self.assertEqual(no_user.status_code, 401)
+        self.assertIn("Имэйл эсвэл нууц үг буруу байна", bad_pw.text)
+        self.assertIn("Имэйл эсвэл нууц үг буруу байна", no_user.text)
+        self.assertIn(f'value="{email}"', bad_pw.text)  # имэйлээ дахин бичих шаардлагагүй
+
+    def test_too_many_attempts_are_blocked(self):
+        email = fresh_email()
+        new_client(email=email)
+        c = TestClient(app)
+        for _ in range(5):
+            c.post("/login", data={"email": email, "password": "nope-nope"})
+        r = c.post("/login", data={"email": email, "password": "secret-pass-1"}, follow_redirects=False)
+        self.assertEqual(r.status_code, 429)  # зөв нууц үг ч 15 минут хаагдана
+
+    def test_signup_validates_email_and_password(self):
+        email = fresh_email()
+        new_client(email=email)
+        cases = [({"email": "not-an-email"}, 400), ({"password": "short"}, 400), ({"email": email}, 409)]
+        for override, status in cases:
+            with self.subTest(override=override):
+                data = {**PROFILE, "email": fresh_email(), **override}
+                r = TestClient(app).post("/onboarding", data=data, follow_redirects=False)
+                self.assertEqual(r.status_code, status)
+                self.assertIsInstance(r.json()["detail"], str)  # JS энэ текстийг харуулна
+
+    def test_login_page_in_three_languages(self):
+        for code, word in [("mn", "Нэвтрэх"), ("en", "Sign in"), ("ko", "로그인")]:
+            c = TestClient(app)
+            c.get(f"/lang/{code}")
+            with self.subTest(lang=code):
+                self.assertIn(word, c.get("/login").text)
+                self.assertIn('href="/login"', c.get("/onboarding").text)
+
+    def test_old_database_gets_new_columns(self):
+        """Нэвтрэх систем нэмэгдэхээс өмнөх fitcoach.db ажилласаар байх ёстой."""
+        path = os.path.join(_TMP, "old.db")
+        c = sqlite3.connect(path)
+        with c:
+            c.execute("CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, age INTEGER,"
+                      " gender TEXT, height_cm REAL, weight_kg REAL, goal TEXT, level TEXT, days_per_week INTEGER,"
+                      " equipment TEXT, created_at TEXT)")
+            c.execute("INSERT INTO users (name) VALUES ('Хуучин')")
+        c.close()
+        saved, db.DB_PATH = db.DB_PATH, path
+        try:
+            db.init_db()
+            c = sqlite3.connect(path)
+            cols = {r[1] for r in c.execute("PRAGMA table_info(users)")}
+            c.close()
+            self.assertTrue({"token", "email", "password_hash"} <= cols)
+        finally:
+            db.DB_PATH = saved
 
 
 class StaticCacheTest(unittest.TestCase):
