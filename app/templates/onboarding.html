@@ -30,7 +30,7 @@
     </div>
 
     <div class="flex gap-1.5 mb-6" aria-hidden="true">
-      {% for i in range(4) %}<div class="ob-bar h-1.5 flex-1 rounded-full bg-line"></div>{% endfor %}
+      {% for i in range(5) %}<div class="ob-bar h-1.5 flex-1 rounded-full bg-line"></div>{% endfor %}
     </div>
 
     <form id="ob-form" method="post" action="/onboarding" class="flex-1 lg:flex-none flex flex-col" novalidate>
@@ -121,6 +121,23 @@
         </fieldset>
       </section>
 
+      <!-- 5. Акаунт: дараа нь өөр төхөөрөмжөөс нэвтрэхэд -->
+      <section class="ob-step space-y-5 hidden" data-step="4">
+        <div>
+          <h1 class="font-display text-[26px] leading-tight font-semibold">{{ t('ob.account_h') }}</h1>
+          <p class="text-ink-2 mt-2">{{ t('ob.account_sub') }}</p>
+        </div>
+        <div>
+          <label class="label" for="email">{{ t('f.email') }}</label>
+          <input class="field" id="email" name="email" type="email" required maxlength="120" autocomplete="email" inputmode="email" placeholder="you@example.com">
+        </div>
+        <div>
+          <label class="label" for="password">{{ t('f.password') }}</label>
+          <input class="field" id="password" name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password" aria-describedby="pw-hint">
+          <p id="pw-hint" class="text-ink-2 text-[12.5px] mt-1.5">{{ t('f.password_hint') }}</p>
+        </div>
+      </section>
+
       <p id="ob-error" class="text-sm text-pulse mt-4 min-h-[1.25rem]" role="alert"></p>
 
       <div class="mt-auto lg:mt-6 pt-6 flex gap-3">
@@ -129,7 +146,9 @@
       </div>
     </form>
 
-    <form method="post" action="/demo" class="mt-6 pt-5 border-t border-line text-center">
+    <p class="text-center text-[14px] mt-5">{{ t('ob.have_account') }} <a href="/login" class="text-track font-semibold">{{ t('ob.login_link') }}</a></p>
+
+    <form method="post" action="/demo" class="mt-5 pt-5 border-t border-line text-center">
       <p class="text-ink-2 text-[13px] mb-2">{{ t('ob.demo_or') }}</p>
       <button class="btn btn-ghost w-full"><span class="msr">play_circle</span>{{ t('ob.demo_btn') }}</button>
       <p class="text-ink-2 text-[12.5px] mt-2">{{ t('ob.demo_sub') }}</p>
@@ -175,9 +194,22 @@
   next.addEventListener("click", () => {
     if (!valid(cur)) return;
     if (cur < steps.length - 1) { show(++cur); return; }
-    next.disabled = true; next.textContent = t("js.ob_busy");
-    form.submit();
+    submit();
   });
+
+  // fetch-ээр илгээнэ: имэйл давхардсан гэх мэт серверийн алдааг хуудсаа орхилгүй харуулна
+  async function submit() {
+    next.disabled = true; next.textContent = t("js.ob_busy");
+    try {
+      const r = await fetch(form.action, { method: "POST", body: new FormData(form) });
+      if (r.ok) { location.href = "/"; return; }
+      const d = await r.json().catch(() => ({}));
+      err.textContent = typeof d.detail === "string" ? d.detail : t("js.retry");
+    } catch (e) {
+      err.textContent = t("js.net", { status: "—" });
+    }
+    next.disabled = false; next.textContent = t("js.ob_make");
+  }
   back.addEventListener("click", () => cur > 0 && show(--cur));
   form.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); next.click(); } });
   show(0);

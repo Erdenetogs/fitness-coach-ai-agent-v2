@@ -1,4 +1,13 @@
-"""SQLite өгөгдлийн сан. Python-д суурилагдсан sqlite3 ашиглана — нэмэлт суулгах зүйлгүй."""
+"""Өгөгдлийн сан: SQLite эсвэл PostgreSQL.
+
+- DATABASE_URL байхгүй (локал, Codespaces, тест) → SQLite файл (fitcoach.db). Нэмэлт суулгах зүйлгүй.
+- DATABASE_URL=postgresql://... (Render дээр Neon) → PostgreSQL. Сервер дахин асахад өгөгдөл устахгүй.
+
+Бусад файл SQL-ээ "?" орлуулагчтай, sqlite3-тай ижил хэлбэрээр бичнэ. Postgres үед _PgConn
+үүнийг "%s" болгож хувиргана. Хоёуланд ажилладаг SQL бичих: "INSERT OR IGNORE" биш
+"INSERT ... ON CONFLICT DO NOTHING" гэх мэт.
+"""
+import atexit
 import json
 import os
 import secrets
@@ -7,6 +16,17 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 
 DB_PATH = os.getenv("FITCOACH_DB", "fitcoach.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+IS_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
+
+if IS_PG:
+    import psycopg
+    from psycopg.rows import dict_row
+    from psycopg_pool import ConnectionPool
+
+    IntegrityError = psycopg.IntegrityError
+else:
+    IntegrityError = sqlite3.IntegrityError
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -14,7 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     age INTEGER, gender TEXT, height_cm REAL, weight_kg REAL,
     goal TEXT, level TEXT, days_per_week INTEGER, equipment TEXT,
-    created_at TEXT, token TEXT
+    created_at TEXT, token TEXT, email TEXT, password_hash TEXT
 );
 CREATE TABLE IF NOT EXISTS plans (
     user_id INTEGER PRIMARY KEY, plan_json TEXT NOT NULL, updated_at TEXT
@@ -47,6 +67,10 @@ CREATE TABLE IF NOT EXISTS xp_events (
 );
 """
 
+# Postgres дээр AUTOINCREMENT → SERIAL, REAL → DOUBLE PRECISION (61.8 кг яг 61.8 хэвээр үлдэнэ)
+PG_SCHEMA = SCHEMA.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY").replace(" REAL", " DOUBLE PRECISION")
+GROUP_CONCAT = "string_agg(exercise, ', ')" if IS_PG else "GROUP_CONCAT(exercise, ', ')"
+
 
 def now() -> str:
     return datetime.now().isoformat(timespec="seconds")
@@ -56,8 +80,42 @@ def today() -> str:
     return date.today().isoformat()
 
 
+class _PgConn:
+    """psycopg холболтыг sqlite3 шиг ашиглахад: ? → %s, мөрийг dict-ээр."""
+
+    def __init__(self, c):
+        self._c = c
+
+    def execute(self, sql: str, params=()):
+        return self._c.execute(sql.replace("?", "%s"), params)
+
+    def executemany(self, sql: str, rows):
+        with self._c.cursor() as cur:
+            cur.executemany(sql.replace("?", "%s"), rows)
+
+
+_pool = None
+
+
+def _pg_pool():
+    """Холболтуудыг дахин ашиглана — хүсэлт бүрт Neon руу шинээр холбогдвол удаан.
+    check=...: Neon 5 минут ашиглаагүй бол унтаж холболтыг тасалдаг тул ашиглахын өмнө шалгана.
+    prepare_threshold=None: Neon-ий pooler (PgBouncer)-тэй prepared statement зөрчилдөхөөс сэргийлнэ."""
+    global _pool
+    if _pool is None:
+        _pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=5, open=True,
+                               kwargs={"row_factory": dict_row, "prepare_threshold": None},
+                               check=ConnectionPool.check_connection)
+        atexit.register(_pool.close)  # сервер унтрахад холболтуудыг цэвэрхэн хаана
+    return _pool
+
+
 @contextmanager
 def conn():
+    if IS_PG:
+        with _pg_pool().connection() as c:  # алдаагүй бол commit, алдаа гарвал rollback
+            yield _PgConn(c)
+        return
     c = sqlite3.connect(DB_PATH)
     c.row_factory = sqlite3.Row
     try:
@@ -67,17 +125,36 @@ def conn():
         c.close()
 
 
+def _columns(c, table: str) -> set[str]:
+    if IS_PG:
+        rows = c.execute("SELECT column_name AS name FROM information_schema.columns WHERE table_name=?", (table,))
+    else:
+        rows = c.execute(f"PRAGMA table_info({table})")
+    return {r["name"] for r in rows}
+
+
 def init_db():
-    folder = os.path.dirname(DB_PATH)
-    if folder:
-        os.makedirs(folder, exist_ok=True)
+    if not IS_PG:
+        folder = os.path.dirname(DB_PATH)
+        if folder:
+            os.makedirs(folder, exist_ok=True)
     with conn() as c:
-        c.executescript(SCHEMA)
+        if IS_PG:
+            for stmt in PG_SCHEMA.split(";"):
+                if stmt.strip():
+                    c.execute(stmt)
+        else:
+            c.executescript(SCHEMA)
         # Хуучин fitcoach.db-д token багана байхгүй бол нэмнэ
-        cols = {r["name"] for r in c.execute("PRAGMA table_info(users)")}
+        cols = _columns(c, "users")
         if "token" not in cols:
             c.execute("ALTER TABLE users ADD COLUMN token TEXT")
+        # Нэвтрэх систем нэмэгдэхээс өмнөх fitcoach.db-д имэйл, нууц үгийн багана нэмнэ
+        for col in ("email", "password_hash"):
+            if col not in cols:
+                c.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_token ON users(token)")
+        c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
 
 
 # ---------- Хэрэглэгч ----------
@@ -86,13 +163,16 @@ def create_user(data: dict) -> tuple[int, str]:
     id-г шууд cookie-д хийвэл хэн ч тоог нь сольж бусдын мэдээллийг харж чадна."""
     token = secrets.token_urlsafe(32)
     with conn() as c:
-        cur = c.execute(
-            """INSERT INTO users (name, age, gender, height_cm, weight_kg, goal, level,
-               days_per_week, equipment, created_at, token) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-            (data["name"], data["age"], data["gender"], data["height_cm"], data["weight_kg"],
-             data["goal"], data["level"], data["days_per_week"], data["equipment"], now(), token),
-        )
-        uid = cur.lastrowid
+        sql = """INSERT INTO users (name, age, gender, height_cm, weight_kg, goal, level,
+               days_per_week, equipment, created_at, token, email, password_hash)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+        params = (data["name"], data["age"], data["gender"], data["height_cm"], data["weight_kg"],
+                  data["goal"], data["level"], data["days_per_week"], data["equipment"], now(), token,
+                  data.get("email"), data.get("password_hash"))
+        if IS_PG:  # Postgres-д lastrowid байхгүй
+            uid = c.execute(sql + " RETURNING id", params).fetchone()["id"]
+        else:
+            uid = c.execute(sql, params).lastrowid
         c.execute("INSERT INTO weights (user_id, day, kg) VALUES (?,?,?)", (uid, today(), data["weight_kg"]))
         return uid, token
 
@@ -110,6 +190,14 @@ def get_user_by_token(token: str | None) -> dict | None:
         return None
     with conn() as c:
         row = c.execute("SELECT * FROM users WHERE token=?", (token,)).fetchone()
+        return dict(row) if row else None
+
+
+def get_user_by_email(email: str | None) -> dict | None:
+    if not email:
+        return None
+    with conn() as c:
+        row = c.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         return dict(row) if row else None
 
 
@@ -181,7 +269,7 @@ def get_workout_history(uid: int, days: int = 14) -> list[dict]:
     since = (date.today() - timedelta(days=days)).isoformat()
     with conn() as c:
         rows = c.execute(
-            "SELECT day, COUNT(*) AS done_count, GROUP_CONCAT(exercise, ', ') AS exercises "
+            f"SELECT day, COUNT(*) AS done_count, {GROUP_CONCAT} AS exercises "
             "FROM workout_logs WHERE user_id=? AND done=1 AND day >= ? "
             "GROUP BY day ORDER BY day",
             (uid, since),
@@ -246,7 +334,7 @@ def award_xp(uid: int, kind: str, amount: int, key: str) -> bool:
     """Нэг (kind, key) хослолд нэг л удаа XP өгнө. Шинээр өгсөн бол True."""
     with conn() as c:
         cur = c.execute(
-            "INSERT OR IGNORE INTO xp_events (user_id, day, kind, amount, key) VALUES (?,?,?,?,?)",
+            "INSERT INTO xp_events (user_id, day, kind, amount, key) VALUES (?,?,?,?,?) ON CONFLICT DO NOTHING",
             (uid, today(), kind, amount, key),
         )
         return cur.rowcount == 1

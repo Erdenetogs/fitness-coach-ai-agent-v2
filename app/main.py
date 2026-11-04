@@ -22,7 +22,7 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 from pydantic import BaseModel
 
-from app import db, demo, i18n, planner, xp
+from app import auth, db, demo, i18n, planner, xp
 from app.agent import coach, fridge, llm
 
 BASE = Path(__file__).parent
@@ -109,13 +109,14 @@ def validate_profile(name: str, age: int, gender: str, height_cm: float, goal: s
     return data
 
 
-def page(request: Request, name: str, active: str, **ctx):
+def page(request: Request, name: str, active: str, status_code: int = 200, **ctx):
     user = ctx.get("user") or current_user(request)
     lang = i18n.from_request(request)
     coach_status = xp.status(user["id"], lang) if user else None
     return templates.TemplateResponse(request, name, {"active": active, "user": user, "ai_live": llm.is_live(),
                                                       "coach": coach_status, "lang": lang,
-                                                      "js_strings": i18n.js_strings(lang), **ctx})
+                                                      "js_strings": i18n.js_strings(lang), **ctx},
+                                      status_code=status_code)
 
 
 def need_user(request: Request):
@@ -134,15 +135,52 @@ def onboarding_submit(
     request: Request, name: str = Form(...), age: int = Form(...), gender: str = Form(...),
     height_cm: float = Form(...), weight_kg: float = Form(...), goal: str = Form(...),
     level: str = Form(...), days_per_week: int = Form(...), equipment: str = Form(...),
+    email: str = Form(...), password: str = Form(...),
 ):
     lang = i18n.from_request(request)
     data = validate_profile(name, age, gender, height_cm, goal, level, days_per_week, equipment, weight_kg, lang)
-    uid, token = db.create_user(data)
+    email = auth.normalize_email(email)
+    if not auth.valid_email(email):
+        raise HTTPException(400, i18n.t("err.email", lang))
+    if not auth.valid_password(password):
+        raise HTTPException(400, i18n.t("err.password_short", lang))
+    if db.get_user_by_email(email):
+        raise HTTPException(409, i18n.t("err.email_taken", lang))
+    try:
+        uid, token = db.create_user({**data, "email": email, "password_hash": auth.hash_password(password)})
+    except db.IntegrityError:  # яг зэрэг ижил имэйлээр бүртгүүлсэн
+        raise HTTPException(409, i18n.t("err.email_taken", lang))
     db.save_plan(uid, planner.build_plan(data))
     db.add_message(uid, "assistant", i18n.t("m.greeting", lang, name=data["name"], d=days_per_week),
                    [{"icon": "edit_calendar", "text": i18n.t("step.plan_created", lang)}])
     resp = RedirectResponse("/", status_code=303)
     resp.set_cookie(COOKIE, token, max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax")
+    return resp
+
+
+@app.get("/login")
+def login_page(request: Request):
+    if current_user(request):
+        return RedirectResponse("/", status_code=303)
+    return page(request, "login.html", "login")
+
+
+@app.post("/login")
+def login_submit(request: Request, email: str = Form(""), password: str = Form("")):
+    """Имэйл + нууц үгээр нэвтэрнэ. Аль нь буруу байгааг хэлэхгүй (имэйл бүртгэлтэй эсэхийг таахгүйн тулд)."""
+    lang = i18n.from_request(request)
+    email = auth.normalize_email(email)
+    if auth.locked(email):
+        return page(request, "login.html", "login", error=i18n.t("err.too_many", lang), email=email,
+                    status_code=429)
+    user = db.get_user_by_email(email)
+    if not auth.check_login(password, user and user.get("password_hash")):
+        auth.record_fail(email)
+        return page(request, "login.html", "login", error=i18n.t("err.login", lang), email=email,
+                    status_code=401)
+    auth.clear_fails(email)
+    resp = RedirectResponse("/", status_code=303)
+    resp.set_cookie(COOKIE, user["token"], max_age=60 * 60 * 24 * 365, httponly=True, samesite="lax")
     return resp
 
 
@@ -247,7 +285,7 @@ def set_language(code: str, next: str = "/"):
 
 @app.get("/logout")
 def logout():
-    resp = RedirectResponse("/onboarding", status_code=303)
+    resp = RedirectResponse("/login", status_code=303)
     resp.delete_cookie(COOKIE)
     return resp
 
