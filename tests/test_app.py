@@ -536,5 +536,17 @@ class AgentHistoryTest(unittest.TestCase):
         assistant = calls[1]["messages"][-2]
         self.assertEqual([b["type"] for b in assistant["content"]], ["tool_use"])
 
+
+class DatabaseUrlTest(unittest.TestCase):
+    def test_parses_pasted_snippet_forms(self):
+        url = "postgresql://u:p@ep-x-pooler.neon.tech/neondb?sslmode=require&channel_binding=require"
+        for raw in [url, f"'{url}'", f'"{url}"', f"psql '{url}'", f"DATABASE_URL={url}", f"  {url}\n"]:
+            with self.subTest(raw=raw):
+                self.assertEqual(db._parse_database_url(raw), url)
+        self.assertEqual(db._parse_database_url(""), "")
+
+    def test_status_reports_db_kind(self):
+        self.assertEqual(TestClient(app).get("/api/status").json()["db"], "sqlite")
+
 if __name__ == "__main__":
     unittest.main()

@@ -419,4 +419,4 @@ def healthz():
 
 @app.get("/api/status")
 def api_status():
-    return {"ai_live": llm.is_live(), "model": llm.MODEL}
+    return {"ai_live": llm.is_live(), "model": llm.MODEL, "db": db.DB_KIND}

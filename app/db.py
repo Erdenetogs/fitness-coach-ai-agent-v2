@@ -9,15 +9,33 @@
 """
 import atexit
 import json
+import logging
 import os
+import re
 import secrets
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 
 DB_PATH = os.getenv("FITCOACH_DB", "fitcoach.db")
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+
+
+def _parse_database_url(raw: str) -> str:
+    """Render-д буулгасан утгаас postgres хаягийг гаргана. Neon-ий "Copy snippet" заримдаа
+    хашилттай ('postgresql://...'), psql 'postgresql://...' эсвэл DATABASE_URL=... хэлбэрээр хуулдаг."""
+    m = re.search(r"postgres(?:ql)?://[^\s'\"]+", raw or "")
+    return m.group(0) if m else (raw or "").strip()
+
+
+_RAW_DATABASE_URL = os.getenv("DATABASE_URL", "")
+DATABASE_URL = _parse_database_url(_RAW_DATABASE_URL)
 IS_PG = DATABASE_URL.startswith(("postgres://", "postgresql://"))
+DB_KIND = "postgres" if IS_PG else "sqlite"
+
+if _RAW_DATABASE_URL.strip() and not IS_PG:
+    # Тохируулсан ч уншиж чадаагүй бол чимээгүй SQLite руу буцахгүй, Render Logs-д анхааруулна
+    logging.getLogger("fitcoach.db").error(
+        "DATABASE_URL тохируулсан боловч postgresql:// хаяг олдсонгүй — SQLite ашиглаж байна (өгөгдөл устна!)")
 
 if IS_PG:
     import psycopg
