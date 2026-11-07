@@ -546,7 +546,8 @@ class DatabaseUrlTest(unittest.TestCase):
         self.assertEqual(db._parse_database_url(""), "")
 
     def test_status_reports_db_kind(self):
-        self.assertEqual(TestClient(app).get("/api/status").json()["db"], "sqlite")
+        # GitHub дээр тест SQLite, Postgres хоёулан дээр ажилладаг тул тухайн үеийн төрлийг шалгана
+        self.assertEqual(TestClient(app).get("/api/status").json()["db"], "postgres" if db.IS_PG else "sqlite")
 
 if __name__ == "__main__":
     unittest.main()
