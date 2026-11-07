@@ -117,11 +117,13 @@ _pool = None
 
 def _pg_pool():
     """Холболтуудыг дахин ашиглана — хүсэлт бүрт Neon руу шинээр холбогдвол удаан.
+    min_size=0, max_idle=240: хэрэглэгч байхгүй үед нээлттэй холболт үлдээхгүй. Эс бөгөөс pool
+      холболтоо сэргээх бүрт Neon сэрж, үнэгүй багцын сарын 100 CU-цагийг дуусгана.
     check=...: Neon 5 минут ашиглаагүй бол унтаж холболтыг тасалдаг тул ашиглахын өмнө шалгана.
     prepare_threshold=None: Neon-ий pooler (PgBouncer)-тэй prepared statement зөрчилдөхөөс сэргийлнэ."""
     global _pool
     if _pool is None:
-        _pool = ConnectionPool(DATABASE_URL, min_size=1, max_size=5, open=True,
+        _pool = ConnectionPool(DATABASE_URL, min_size=0, max_size=5, max_idle=240, open=True,
                                kwargs={"row_factory": dict_row, "prepare_threshold": None},
                                check=ConnectionPool.check_connection)
         atexit.register(_pool.close)  # сервер унтрахад холболтуудыг цэвэрхэн хаана
