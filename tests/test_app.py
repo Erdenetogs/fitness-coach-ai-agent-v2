@@ -549,5 +549,39 @@ class DatabaseUrlTest(unittest.TestCase):
         # GitHub дээр тест SQLite, Postgres хоёулан дээр ажилладаг тул тухайн үеийн төрлийг шалгана
         self.assertEqual(TestClient(app).get("/api/status").json()["db"], "postgres" if db.IS_PG else "sqlite")
 
+
+class GuardrailsTest(unittest.TestCase):
+    def test_system_prompt_has_scope_safety_and_honesty_rules(self):
+        from app.agent import coach
+        for phrase in ["Хамрах хүрээ", "119", "1200", "Шударга байдал", "forget_memory"]:
+            self.assertIn(phrase, coach.SYSTEM)
+
+    def test_memories_listed_with_ids(self):
+        from app.agent import coach
+        _, uid = new_client()
+        db.add_memory(uid, "Өвдөг өвддөг")
+        mid = db.get_memories(uid)[0]["id"]
+        self.assertIn(f"[id {mid}] Өвдөг өвддөг", coach._memories_text(uid))
+
+    def test_forget_memory_tool(self):
+        from app.agent.tools import run_tool, step_for
+        _, uid = new_client()
+        db.add_memory(uid, "Өвдөг өвддөг")
+        mid = db.get_memories(uid)[0]["id"]
+        self.assertEqual(run_tool(uid, "forget_memory", {"memory_id": mid})["deleted"], "Өвдөг өвддөг")
+        self.assertEqual(db.get_memories(uid), [])
+        self.assertIn("error", run_tool(uid, "forget_memory", {"memory_id": mid}))
+        self.assertIn("error", run_tool(uid, "forget_memory", {"memory_id": "abc"}))
+        self.assertTrue(step_for("forget_memory", {}, "en")["text"])
+
+    def test_cannot_forget_other_users_memory(self):
+        from app.agent.tools import run_tool
+        _, a = new_client()
+        _, b = new_client()
+        db.add_memory(a, "A-гийн нууц")
+        mid = db.get_memories(a)[0]["id"]
+        self.assertIn("error", run_tool(b, "forget_memory", {"memory_id": mid}))
+        self.assertEqual(len(db.get_memories(a)), 1)
+
 if __name__ == "__main__":
     unittest.main()

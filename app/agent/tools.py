@@ -81,6 +81,18 @@ TOOLS = [
             "required": ["fact"],
         },
     },
+    {
+        "name": "forget_memory",
+        "description": (
+            "Хэрэглэгч санах ойгоос мэдээлэл устгахыг хүсвэл (ж: 'өвдөг минь эдгэрсэн, мартаарай') ашигла. "
+            "Системийн зааврын санах ойн жагсаалтаас [id N]-ийг аваад дамжуул."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {"memory_id": {"type": "integer", "description": "Санах ойн [id N] дугаар"}},
+            "required": ["memory_id"],
+        },
+    },
 ]
 
 STEP_ICONS = {
@@ -91,6 +103,7 @@ STEP_ICONS = {
     "update_workout_day": "edit_calendar",
     "log_weight": "scale",
     "save_memory": "bookmark_added",
+    "forget_memory": "bookmark_remove",
 }
 
 
@@ -103,6 +116,8 @@ def step_for(name: str, args: dict, lang: str = "mn") -> dict:
         text = i18n.t("step.log_weight", lang, kg=args.get("kg"))
     elif name == "save_memory":
         text = i18n.t("step.save_memory", lang, fact=args.get("fact", ""))
+    elif name == "forget_memory":
+        text = i18n.t("step.forget_memory", lang)
     elif name in STEP_ICONS:
         text = i18n.t(f"step.{name}", lang)
     else:
@@ -178,6 +193,16 @@ def run_tool(uid: int, name: str, args: dict, lang: str = "mn") -> dict:
             return {"error": "fact хоосон байна"}
         db.add_memory(uid, fact)
         return {"ok": True}
+    if name == "forget_memory":
+        try:
+            mid = int(args.get("memory_id"))
+        except (TypeError, ValueError):
+            return {"error": "memory_id нь тоо байх ёстой"}
+        match = [m for m in db.get_memories(uid) if m["id"] == mid]
+        if not match:
+            return {"error": f"[id {mid}] санах ой олдсонгүй"}
+        db.delete_memory(uid, mid)
+        return {"ok": True, "deleted": match[0]["text"]}
     return {"error": f"Тодорхойгүй хэрэгсэл: {name}"}
 
 
