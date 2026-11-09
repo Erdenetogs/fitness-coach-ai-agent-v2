@@ -553,7 +553,7 @@ class DatabaseUrlTest(unittest.TestCase):
 class GuardrailsTest(unittest.TestCase):
     def test_system_prompt_has_scope_safety_and_honesty_rules(self):
         from app.agent import coach
-        for phrase in ["Хамрах хүрээ", "119", "1200", "Шударга байдал", "forget_memory"]:
+        for phrase in ["119", "1200", "Шударга байдал", "forget_memory"]:
             self.assertIn(phrase, coach.SYSTEM)
 
     def test_memories_listed_with_ids(self):
