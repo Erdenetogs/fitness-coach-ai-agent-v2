@@ -318,6 +318,7 @@ STRINGS: dict[str, tuple[str, str, str]] = {
     "step.update_workout_day": ("{day} гарагийн дасгалыг өөрчилсөн", "Changed {day}'s workout", "{day} 운동 변경"),
     "step.log_weight": ("Жинг бүртгэсэн: {kg} кг", "Logged weight: {kg} kg", "체중 기록: {kg}kg"),
     "step.save_memory": ("Санах ойд хадгалсан: {fact}", "Saved to memory: {fact}", "기억에 저장: {fact}"),
+    "step.forget_memory": ("Санах ойгоос устгасан", "Removed from memory", "기억에서 삭제"),
     "step.plan_created": ("Долоо хоногийн төлөвлөгөө үүсгэсэн", "Created your weekly plan", "주간 계획 생성"),
     "step.f_profile": ("Профайл, калорийн зорилтыг уншсан", "Read your profile and calorie target", "프로필과 칼로리 목표 확인"),
     "step.f_memory": ("Санах ой (харшил, дуршил)-г шалгасан", "Checked memory (allergies, preferences)", "기억(알레르기, 선호) 확인"),

@@ -15,7 +15,7 @@
 - ✅ 7 хуудас (UI/UX), утсанд тохирсон · Figma дизайн систем
 - ✅ JavaScript: зураг upload, чат, Chart.js график, fetch, toast
 - ✅ FastAPI сервер, SQLite (7 хүснэгт), бүх API, `render.yaml`
-- ✅ Claude agent loop, 7 хэрэгсэл, санах ой, хөргөгчний зураг → жор, демо горим
+- ✅ Claude agent loop, 8 хэрэгсэл, санах ой, хөргөгчний зураг → жор, демо горим
 - ✅ XP/level, streak, coach avatar (санаа: Erdenetogs)
 - ✅ 20 автомат тест + GitHub Actions
 
