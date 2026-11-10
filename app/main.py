@@ -22,7 +22,7 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 from pydantic import BaseModel
 
-from app import auth, db, demo, i18n, planner, xp
+from app import auth, db, demo, guide, i18n, planner, xp
 from app.agent import coach, fridge, llm
 
 BASE = Path(__file__).parent
@@ -78,7 +78,12 @@ def _ex(ctx, name):
     return i18n.exercise(name, ctx.get("lang", i18n.DEFAULT))
 
 
-templates.env.globals.update(t=_t, wd=_wd, day_title=_title, ex=_ex)
+@pass_context
+def _guide(ctx, name):
+    return guide.get(name, ctx.get("lang", i18n.DEFAULT))
+
+
+templates.env.globals.update(t=_t, wd=_wd, day_title=_title, ex=_ex, guide=_guide)
 
 db.init_db()
 
@@ -371,8 +376,30 @@ def api_done(body: DoneIn, request: Request):
     done = db.get_done_today(user["id"])
     today_plan = db.get_plan(user["id"]).get(planner.today_name(), {})
     names = {e["name"] for e in today_plan.get("exercises", [])}
-    gained = xp.award(user["id"], "workout", db.today(), i18n.from_request(request)) if names and names <= done else None
-    return {"ok": True, "done_today": sorted(done), "xp": gained}
+    lang = i18n.from_request(request)
+    gained = xp.award(user["id"], "workout", db.today(), lang) if names and names <= done else None
+    return {"ok": True, "done_today": sorted(done), "xp": gained, "cheer": _cheer(user, gained, lang) if gained else None}
+
+
+def _cheer(user: dict, gained: dict, lang: str) -> dict:
+    """Өнөөдрийн дасгалыг дуусгахад дасгалжуулагчийн хэлэх үг. AI дуудахгүй (хурдан, үнэгүй) —
+    хэрэглэгчийн бодит өгөгдлөөс (level, streak, 7 хоногийн тоо, зорилго) сонгож бүтээнэ."""
+    week = len(db.get_workout_history(user["id"], 6))  # өнөөдрийг оруулаад 7 хоног
+    streak = gained.get("streak", 0)
+    if gained.get("leveled_up"):
+        title, body = i18n.t("cheer.title_level", lang, level=gained["level"]), i18n.t("cheer.level", lang, stage=gained["stage"])
+    elif streak >= 3:
+        title, body = i18n.t("cheer.title", lang), i18n.t("cheer.streak", lang, n=streak)
+    elif week >= 2:
+        title, body = i18n.t("cheer.title", lang), i18n.t("cheer.week", lang, n=week)
+    else:
+        title, body = i18n.t("cheer.title", lang), i18n.t("cheer.first", lang)
+    tip = i18n.t(f"cheer.tip_{user.get('goal') if user.get('goal') in ('lose', 'gain') else 'fit'}", lang)
+    stats = [f"+{gained['gained']} XP"]
+    if streak >= 2:
+        stats.append(i18n.t("cheer.stat_streak", lang, n=streak))
+    stats.append(i18n.t("cheer.stat_week", lang, n=week))
+    return {"title": title, "text": f"{body} {tip}", "stats": stats, "level": gained["level"]}
 
 
 @app.post("/api/weight")

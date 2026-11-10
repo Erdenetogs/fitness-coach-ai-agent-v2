@@ -31,7 +31,7 @@
       <div class="sticky bottom-0 bg-paper/95 backdrop-blur border-t border-line px-3 lg:px-6 pt-2.5" style="padding-bottom: max(.75rem, env(safe-area-inset-bottom))">
         <div id="chips" class="flex gap-2 overflow-x-auto pb-2.5 [scrollbar-width:none] lg:flex-wrap lg:overflow-visible">
           {% for q in [t('ch.q1'), t('ch.q2'), t('ch.q3'), t('ch.q4'), t('coach.ask_level'), t('ch.q6')] %}
-          <button type="button" class="chip flex-none text-[13px] bg-white border border-line rounded-full px-3 py-1.5">{{ q }}</button>
+          <button type="button" class="chip flex-none text-[13px] bg-surface border border-line rounded-full px-3 py-1.5">{{ q }}</button>
           {% endfor %}
         </div>
         <form id="chat-form" class="flex items-end gap-2 lg:pb-3">

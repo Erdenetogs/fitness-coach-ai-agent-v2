@@ -56,3 +56,29 @@ function showXp(xp) {
 function formatReply(text) {
   return escapeHtml(text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
 }
+
+/** CSS хувьсагчийн өнгийг JS-д авах (Chart.js гэх мэт): cssColor("track"), cssColor("track", .1). */
+function cssColor(name, alpha = 1) {
+  const rgb = getComputedStyle(document.documentElement).getPropertyValue(`--${name}-rgb`).trim().split(/\s+/).join(", ");
+  return `rgba(${rgb}, ${alpha})`;
+}
+
+/** Харагдац: "system" (төхөөрөмжийнхөөр) | "light" | "dark". Сонголт энэ браузерт хадгалагдана.
+    Хуудас ачаалахад base.html-ийн <head> доторх жижиг script үүнийг уншиж тавьдаг. */
+function currentTheme() {
+  try { const th = localStorage.getItem("fitcoach_theme"); return th === "light" || th === "dark" ? th : "system"; }
+  catch (_) { return "system"; }
+}
+function setTheme(theme) {
+  try { theme === "system" ? localStorage.removeItem("fitcoach_theme") : localStorage.setItem("fitcoach_theme", theme); } catch (_) {}
+  if (theme === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+  syncThemeButtons();
+  document.dispatchEvent(new Event("themechange"));
+}
+function syncThemeButtons() {
+  const th = currentTheme();
+  document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.themeSet === th));
+}
+document.querySelectorAll("[data-theme-set]").forEach((b) => b.addEventListener("click", () => setTheme(b.dataset.themeSet)));
+syncThemeButtons();

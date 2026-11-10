@@ -1,7 +1,7 @@
 {# Компьютерийн цэс (lg ≥ 1024px). Утсан дээр харагдахгүй — тэнд доод цэс ажиллана.
    Доод хэсэгт coach-ийн дүрс level-ээрээ өсөж харагдана. #}
 {% from '_coach.html' import avatar with context %}
-{% from '_lang.html' import switcher with context %}
+{% from '_lang.html' import switcher, theme_switcher with context %}
 <aside class="sidebar hidden lg:flex flex-col w-64 shrink-0 h-screen sticky top-0 bg-ink text-white px-4 py-6">
   <a href="/" class="flex items-center gap-2.5 px-2 mb-8">
     <span class="w-9 h-9 rounded-xl bg-track grid place-items-center"><span class="msr fill">bolt</span></span>
@@ -36,7 +36,8 @@
   </a>
   {% endif %}
 
-  <div class="{{ 'mt-4' if coach else 'mt-auto' }} flex items-center justify-between gap-2 px-1">
+  <div class="{{ 'mt-4' if coach else 'mt-auto' }} px-1">{{ theme_switcher(dark=True, labels=False) }}</div>
+  <div class="mt-2 flex items-center justify-between gap-2 px-1">
     {{ switcher(dark=True) }}
     {% if not ai_live %}<span class="text-[11px] text-white/55" title="{{ t('demo.title') }}">{{ t('demo') }}</span>{% endif %}
   </div>

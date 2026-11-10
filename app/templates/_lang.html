@@ -8,3 +8,13 @@
   {% endfor %}
 </div>
 {%- endmacro %}
+
+{# Харагдац солих товч: Систем / Цайвар / Харанхуй. labels=False бол зөвхөн дүрс (компьютерийн цэс). #}
+{% macro theme_switcher(dark=False, labels=True) -%}
+<div role="group" aria-label="{{ t('theme.label') }}" class="lang-switch {{ 'lang-dark' if dark }}">
+  {% for key, icon in [('system', 'contrast'), ('light', 'light_mode'), ('dark', 'dark_mode')] %}
+  <button type="button" data-theme-set="{{ key }}" aria-pressed="false" title="{{ t('theme.' ~ key) }}"
+          {% if not labels %}aria-label="{{ t('theme.' ~ key) }}"{% endif %}><span class="msr">{{ icon }}</span>{% if labels %}{{ t('theme.' ~ key) }}{% endif %}</button>
+  {% endfor %}
+</div>
+{%- endmacro %}

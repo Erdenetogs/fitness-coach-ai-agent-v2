@@ -13,7 +13,7 @@
   <div class="flex flex-col items-end gap-2 lg:hidden">
     {{ switcher() }}
     {% if not ai_live %}
-    <span class="text-[11px] font-medium text-ink-2 bg-white border border-line rounded-full px-2.5 py-1" title="{{ t('demo.title') }}">{{ t('demo') }}</span>
+    <span class="text-[11px] font-medium text-ink-2 bg-surface border border-line rounded-full px-2.5 py-1" title="{{ t('demo.title') }}">{{ t('demo') }}</span>
     {% endif %}
   </div>
 </header>
@@ -47,7 +47,7 @@
         <ul class="hidden lg:flex flex-wrap gap-1.5 mt-4" aria-hidden="true">
           {% for e in today.exercises %}<li class="text-[13px] rounded-full px-3 py-1 {{ 'bg-mint/25 text-white/60 line-through' if e.name in done else 'bg-white/10 text-white/85' }}">{{ ex(e.name) }}</li>{% endfor %}
         </ul>
-        <a href="/workout" class="btn bg-white text-ink mt-4 lg:mt-5 py-2.5 text-sm">
+        <a href="/workout" class="btn bg-white text-[#16213a] mt-4 lg:mt-5 py-2.5 text-sm">
           {% if n_done == total %}<span class="msr text-[20px]">checklist</span>{{ t('home.view') }}{% else %}<span class="msr text-[20px]">play_arrow</span>{% if n_done %}{{ t('home.continue') }}{% else %}{{ t('home.start') }}{% endif %}{% endif %}
         </a>
         {% else %}

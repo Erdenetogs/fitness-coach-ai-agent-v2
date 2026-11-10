@@ -469,6 +469,55 @@ class LoginTest(unittest.TestCase):
             db.DB_PATH = saved
 
 
+class GuideCheerThemeTest(unittest.TestCase):
+    def test_every_library_exercise_has_a_guide_in_three_languages(self):
+        from app import guide
+        names = {n for eq in planner.LIBRARY.values() for focus in eq.values() for n, _ in focus} | {"Сунгалт", "Хөнгөн алхалт"}
+        for name in names:
+            for lang in ("mn", "en", "ko"):
+                with self.subTest(name=name, lang=lang):
+                    g = guide.get(name, lang)
+                    self.assertEqual(len(g["steps"]), 3)
+                    self.assertTrue(all(g["steps"]) and g["tip"])
+                    self.assertIn("<svg", g["svg"])
+        self.assertIsNone(guide.get("Агентын зохиосон дасгал"))
+
+    def test_workout_page_shows_guides(self):
+        c, _ = new_client()
+        page = c.get("/workout").text
+        self.assertIn('data-guide="pushup"', page)
+        self.assertIn('<template id="guide-pushup">', page)
+        self.assertEqual(page.count('<template id="guide-pushup">'), 1)  # олон өдөрт давтагдсан ч нэг л удаа
+        c.get("/lang/en")
+        self.assertIn("Push the floor away", c.get("/workout").text)
+
+    def test_finishing_today_returns_cheer_once(self):
+        c, uid = new_client()
+        todays = [e["name"] for e in db.get_plan(uid)[planner.today_name()]["exercises"]]
+        if not todays:
+            self.skipTest("Ням гараг — тестийн хэрэглэгчид амрах өдөр")
+        for name in todays[:-1]:
+            self.assertIsNone(c.post("/api/workout/done", json={"exercise": name, "done": True}).json()["cheer"])
+        r = c.post("/api/workout/done", json={"exercise": todays[-1], "done": True}).json()
+        self.assertEqual(r["cheer"]["title"], "Өнөөдрийн дасгал дууслаа!")
+        self.assertIn("Сайхан эхлэл", r["cheer"]["text"])       # анхны дасгал
+        self.assertIn("ус сайн ууж", r["cheer"]["text"])         # зорилго: жин хасах
+        self.assertEqual(r["cheer"]["stats"][0], "+40 XP")
+        # Болиулаад дахин тэмдэглэхэд XP ч, урамшуулал ч давтагдахгүй
+        c.post("/api/workout/done", json={"exercise": todays[-1], "done": False})
+        again = c.post("/api/workout/done", json={"exercise": todays[-1], "done": True}).json()
+        self.assertIsNone(again["cheer"])
+
+    def test_theme_switcher_and_no_hardcoded_white(self):
+        c, _ = new_client()
+        page = c.get("/profile").text
+        for key in ("system", "light", "dark"):
+            self.assertIn(f'data-theme-set="{key}"', page)
+        self.assertIn("fitcoach_theme", page)  # хуудас зурагдахаас өмнө сонголтыг уншдаг script
+        for path in ("/", "/workout", "/food", "/progress", "/profile", "/chat"):
+            self.assertNotRegex(c.get(path).text, r'class="[^"]*\bbg-white(?![/\w-])(?![^"]*text-\[#16213a\])')
+
+
 class StaticCacheTest(unittest.TestCase):
     def test_static_links_carry_version(self):
         """CSS/JS холбоос дээр файлын hash байх ёстой — deploy-ийн дараа браузер хуучин JS ашиглахгүй."""
