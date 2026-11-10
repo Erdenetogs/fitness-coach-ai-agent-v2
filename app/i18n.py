@@ -122,7 +122,6 @@ STRINGS: dict[str, tuple[str, str, str]] = {
                "Your AI coach builds a personal plan from your answers.",
                "입력한 정보로 AI 코치가 맞춤 계획을 만들어요."),
     "f.name_your": ("Таны нэр", "Your name", "이름"),
-    "f.name_ph": ("Жишээ: Баяраа", "e.g. Bayaraa", "예: 바야라"),
     "f.age": ("Нас", "Age", "나이"),
     "f.gender": ("Хүйс", "Gender", "성별"),
     "ob.body": ("Биеийн хэмжээ", "Your body", "신체 정보"),
