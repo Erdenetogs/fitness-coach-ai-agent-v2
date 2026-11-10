@@ -34,7 +34,7 @@ def from_total(total: int, lang: str = "mn") -> dict:
 def streak(uid: int) -> int:
     """Өнөөдөр эсвэл өчигдрөөс эхлэн дараалан идэвхтэй байсан өдрийн тоо."""
     days = {date.fromisoformat(d) for d in db.get_active_days(uid)}
-    cur = date.today()
+    cur = db.local_date()
     if cur not in days:
         cur -= timedelta(days=1)
     n = 0

@@ -16,8 +16,13 @@ import secrets
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 DB_PATH = os.getenv("FITCOACH_DB", "fitcoach.db")
+
+# Render-ийн сервер UTC цагаар ажилладаг. Шууд date.today() ашиглавал Солонгост 00:00–09:00 хооронд
+# "өнөөдөр" нь өчигдөр болж, дасгал/XP/streak буруу өдөрт бичигдэнэ. Тиймээс бүх огноог апп-ын цагийн бүсээр.
+TZ = ZoneInfo(os.getenv("APP_TZ", "Asia/Seoul"))
 
 
 def _parse_database_url(raw: str) -> str:
@@ -52,7 +57,7 @@ CREATE TABLE IF NOT EXISTS users (
     name TEXT NOT NULL,
     age INTEGER, gender TEXT, height_cm REAL, weight_kg REAL,
     goal TEXT, level TEXT, days_per_week INTEGER, equipment TEXT,
-    created_at TEXT, token TEXT, email TEXT, password_hash TEXT
+    created_at TEXT, token TEXT, email TEXT, password_hash TEXT, is_demo INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS plans (
     user_id INTEGER PRIMARY KEY, plan_json TEXT NOT NULL, updated_at TEXT
@@ -78,6 +83,10 @@ CREATE TABLE IF NOT EXISTS recipes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER, recipe_json TEXT, created_at TEXT
 );
+CREATE TABLE IF NOT EXISTS usage (
+    user_id INTEGER, day TEXT, kind TEXT, n INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, day, kind)
+);
 CREATE TABLE IF NOT EXISTS xp_events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER, day TEXT, kind TEXT, amount INTEGER, key TEXT,
@@ -91,11 +100,16 @@ GROUP_CONCAT = "string_agg(exercise, ', ')" if IS_PG else "GROUP_CONCAT(exercise
 
 
 def now() -> str:
-    return datetime.now().isoformat(timespec="seconds")
+    return datetime.now(TZ).replace(tzinfo=None).isoformat(timespec="seconds")
+
+
+def local_date() -> date:
+    """Апп-ын цагийн бүс (APP_TZ, анхдагч Asia/Seoul) дахь өнөөдрийн огноо."""
+    return datetime.now(TZ).date()
 
 
 def today() -> str:
-    return date.today().isoformat()
+    return local_date().isoformat()
 
 
 class _PgConn:
@@ -173,6 +187,11 @@ def init_db():
         for col in ("email", "password_hash"):
             if col not in cols:
                 c.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
+        if "is_demo" not in cols:
+            c.execute("ALTER TABLE users ADD COLUMN is_demo INTEGER DEFAULT 0")
+            # Энэ багана нэмэгдэхээс өмнө үүссэн демо хэрэглэгчид: имэйлгүй, демо нэртэй
+            c.execute("UPDATE users SET is_demo=1 WHERE email IS NULL AND name IN (?,?,?)",
+                      ("Демо оюутан", "Demo student", "데모 학생"))
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_token ON users(token)")
         c.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)")
 
@@ -184,11 +203,11 @@ def create_user(data: dict) -> tuple[int, str]:
     token = secrets.token_urlsafe(32)
     with conn() as c:
         sql = """INSERT INTO users (name, age, gender, height_cm, weight_kg, goal, level,
-               days_per_week, equipment, created_at, token, email, password_hash)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+               days_per_week, equipment, created_at, token, email, password_hash, is_demo)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
         params = (data["name"], data["age"], data["gender"], data["height_cm"], data["weight_kg"],
                   data["goal"], data["level"], data["days_per_week"], data["equipment"], now(), token,
-                  data.get("email"), data.get("password_hash"))
+                  data.get("email"), data.get("password_hash"), 1 if data.get("is_demo") else 0)
         if IS_PG:  # Postgres-д lastrowid байхгүй
             uid = c.execute(sql + " RETURNING id", params).fetchone()["id"]
         else:
@@ -229,6 +248,33 @@ def update_user(uid: int, data: dict):
     sets = ", ".join(f"{k}=?" for k in fields)
     with conn() as c:
         c.execute(f"UPDATE users SET {sets} WHERE id=?", (*fields.values(), uid))
+
+
+def set_password(uid: int, password_hash: str):
+    with conn() as c:
+        c.execute("UPDATE users SET password_hash=? WHERE id=?", (password_hash, uid))
+
+
+USER_TABLES = ("plans", "weights", "workout_logs", "memories", "messages", "recipes", "xp_events", "usage")
+
+
+def delete_user(uid: int):
+    """Хэрэглэгч болон түүний бүх өгөгдлийг устгана."""
+    with conn() as c:
+        for table in USER_TABLES:
+            c.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
+        c.execute("DELETE FROM users WHERE id=?", (uid,))
+
+
+def delete_old_demo_users(hours: int = 24) -> int:
+    """"Демо үзэх" дарах бүрт шинэ хэрэглэгч үүсдэг тул хуучирсныг нь цэвэрлэнэ. Устгасан тоог буцаана."""
+    cutoff = (datetime.now(TZ).replace(tzinfo=None) - timedelta(hours=hours)).isoformat(timespec="seconds")
+    with conn() as c:
+        ids = [r["id"] for r in c.execute(
+            "SELECT id FROM users WHERE is_demo=1 AND created_at < ?", (cutoff,)).fetchall()]
+    for uid in ids:
+        delete_user(uid)
+    return len(ids)
 
 
 # ---------- Төлөвлөгөө ----------
@@ -284,9 +330,8 @@ def get_done_today(uid: int) -> set[str]:
 
 
 def get_workout_history(uid: int, days: int = 14) -> list[dict]:
-    # SQLite-ийн date('now') нь UTC цаг ашигладаг тул Солонгост өглөө 9-өөс өмнө нэг өдрөөр зөрдөг.
-    # today()-тэй ижил орон нутгийн огноогоор тооцно.
-    since = (date.today() - timedelta(days=days)).isoformat()
+    # SQLite-ийн date('now') нь UTC тул ашиглахгүй — today()-тэй ижил цагийн бүсээр тооцно.
+    since = (local_date() - timedelta(days=days)).isoformat()
     with conn() as c:
         rows = c.execute(
             f"SELECT day, COUNT(*) AS done_count, {GROUP_CONCAT} AS exercises "
@@ -373,3 +418,25 @@ def get_active_days(uid: int) -> list[str]:
             "SELECT DISTINCT day FROM xp_events WHERE user_id=? ORDER BY day DESC", (uid,)
         ).fetchall()
         return [r["day"] for r in rows]
+
+
+# ---------- AI ашиглалтын өдрийн хязгаар ----------
+def use_quota(uid: int, kind: str, limit: int) -> bool:
+    """Өнөөдрийн тоолуурыг 1-ээр нэмнэ. Хязгаар хэтэрсэн бол нэмэхгүйгээр False буцаана."""
+    day = today()
+    with conn() as c:
+        row = c.execute("SELECT n FROM usage WHERE user_id=? AND day=? AND kind=?", (uid, day, kind)).fetchone()
+        if row and row["n"] >= limit:
+            return False
+        c.execute(
+            "INSERT INTO usage (user_id, day, kind, n) VALUES (?,?,?,1) "
+            "ON CONFLICT(user_id, day, kind) DO UPDATE SET n=usage.n+1",
+            (uid, day, kind),
+        )
+        return True
+
+
+def get_usage(uid: int, kind: str) -> int:
+    with conn() as c:
+        row = c.execute("SELECT n FROM usage WHERE user_id=? AND day=? AND kind=?", (uid, today(), kind)).fetchone()
+        return int(row["n"]) if row else 0

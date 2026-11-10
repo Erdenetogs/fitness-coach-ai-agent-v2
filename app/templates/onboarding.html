@@ -33,6 +33,9 @@
       {% for i in range(5) %}<div class="ob-bar h-1.5 flex-1 rounded-full bg-line"></div>{% endfor %}
     </div>
 
+    {% if request.query_params.get('deleted') %}
+    <p class="rounded-xl bg-mint-soft text-mint-ink text-sm px-4 py-2.5 mb-5" role="status">{{ t('ob.deleted') }}</p>
+    {% endif %}
     <form id="ob-form" method="post" action="/onboarding" class="flex-1 lg:flex-none flex flex-col" novalidate>
       <!-- 1. Нэр -->
       <section class="ob-step space-y-5" data-step="0">
