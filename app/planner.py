@@ -1,7 +1,7 @@
 """Дүрэмд суурилсан дасгалын төлөвлөгөө ба калорийн тооцоо.
 AI түлхүүргүй байсан ч сайт бүрэн ажиллахын тулд эхний төлөвлөгөөг энд гаргана.
 Дараа нь агент энэ төлөвлөгөөг хэрэглэгчийн хүсэлтээр өөрчилнө."""
-from datetime import date
+from app import db
 
 WEEKDAYS = ["Даваа", "Мягмар", "Лхагва", "Пүрэв", "Баасан", "Бямба", "Ням"]
 
@@ -74,7 +74,7 @@ def build_plan(user: dict) -> dict:
 
 
 def today_name() -> str:
-    return WEEKDAYS[date.today().weekday()]
+    return WEEKDAYS[db.local_date().weekday()]
 
 
 def nutrition(user: dict) -> dict:

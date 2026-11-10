@@ -15,6 +15,8 @@
 <main class="px-5 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-5 lg:items-start">
   {% if request.query_params.get('saved') %}
   <p class="rounded-xl bg-mint-soft text-mint-ink text-sm px-4 py-2.5 lg:col-span-12" role="status">{{ t('pf.saved') }}</p>
+  {% elif request.query_params.get('pw') %}
+  <p class="rounded-xl bg-mint-soft text-mint-ink text-sm px-4 py-2.5 lg:col-span-12" role="status">{{ t('pf.pw_saved') }}</p>
   {% endif %}
 
   <div class="space-y-4 lg:col-span-7">
@@ -88,7 +90,40 @@
       <p class="text-ink-2 text-[12.5px] pt-1">{{ t('pf.disclaimer') }}</p>
     </section>
 
+    {% if user.password_hash %}
+    <form method="post" action="/profile/password" class="card p-4 lg:p-5 space-y-3" id="password">
+      <h2 class="font-semibold">{{ t('pf.security') }}</h2>
+      <input type="email" name="email" value="{{ user.email }}" autocomplete="username" hidden>
+      <div><label class="label" for="pw-current">{{ t('pf.current_pw') }}</label>
+        <input class="field" id="pw-current" name="current" type="password" required maxlength="128" autocomplete="current-password"></div>
+      <div><label class="label" for="pw-new">{{ t('pf.new_pw') }}</label>
+        <input class="field" id="pw-new" name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></div>
+      <div><label class="label" for="pw-new2">{{ t('pf.new_pw2') }}</label>
+        <input class="field" id="pw-new2" name="password2" type="password" required minlength="8" maxlength="128" autocomplete="new-password"></div>
+      {% if pw_error %}<p class="text-sm text-pulse" role="alert">{{ pw_error }}</p>{% endif %}
+      <button class="btn btn-ghost w-full">{{ t('pf.pw_btn') }}</button>
+    </form>
+    {% endif %}
+
     <a href="/logout" class="btn btn-ghost w-full">{{ t('pf.logout') }}</a>
+
+    <details class="card p-4 lg:p-5" id="delete" {{ 'open' if del_error }}>
+      <summary class="font-semibold text-pulse cursor-pointer">{{ t('pf.delete_h') }}</summary>
+      <form method="post" action="/profile/delete" class="space-y-3 mt-3">
+        <p class="text-ink-2 text-[13px]">{{ t('pf.delete_sub') }}</p>
+        {% if user.password_hash %}
+        <div><label class="label" for="del-current">{{ t('pf.current_pw') }}</label>
+          <input class="field" id="del-current" name="current" type="password" required maxlength="128" autocomplete="current-password"></div>
+        {% else %}
+        <label class="flex items-start gap-2.5 text-[14px]">
+          <input type="checkbox" name="confirm" value="yes" required class="mt-1 w-4 h-4">
+          <span>{{ t('pf.delete_confirm') }}</span>
+        </label>
+        {% endif %}
+        {% if del_error %}<p class="text-sm text-pulse" role="alert">{{ del_error }}</p>{% endif %}
+        <button class="btn w-full bg-pulse text-white">{{ t('pf.delete_btn') }}</button>
+      </form>
+    </details>
   </div>
 </main>
 {% endblock %}

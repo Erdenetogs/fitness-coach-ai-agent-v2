@@ -10,7 +10,7 @@ Render-ийн үнэгүй сервер унтах/дахин асах бүрт 
   - явцын тоо (хэдэн өдөр, хэдэн кг, streak)-г үүсгэсэн өгөгдлөөс тооцож чатад бичнэ
 """
 import json
-from datetime import date, timedelta
+from datetime import timedelta
 
 from app import db, i18n, planner, xp
 
@@ -96,9 +96,10 @@ def _weight(i: int) -> float:
 def create(lang: str = "mn") -> tuple[int, str]:
     """3 долоо хоногийн түүхтэй демо хэрэглэгч үүсгээд (id, token) буцаана."""
     lang = lang if lang in NAME else "mn"
-    today = date.today()
+    db.delete_old_demo_users()
+    today = db.local_date()
     start = today - timedelta(days=DAYS - 1)
-    data = {**PROFILE, "name": NAME[lang], "weight_kg": END_KG}
+    data = {**PROFILE, "name": NAME[lang], "weight_kg": END_KG, "is_demo": True}
     uid, token = db.create_user(data)
 
     # Өнгөрсөн дасгалууд анхны төлөвлөгөөгөөр хийгдсэн; өвдөгний ярианаас хойш кардио өдөр өөрчлөгдсөн.

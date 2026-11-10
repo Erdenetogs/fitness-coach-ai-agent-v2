@@ -5,3 +5,4 @@ python-multipart>=0.0.9
 anthropic>=0.40
 python-dotenv>=1.0
 psycopg[binary,pool]>=3.2   # DATABASE_URL (Neon Postgres) тохируулсан үед л ашиглагдана
+tzdata>=2024.1               # цагийн бүсийн мэдээлэл (APP_TZ=Asia/Seoul)

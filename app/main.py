@@ -3,6 +3,7 @@
 API туршилт:  http://127.0.0.1:8000/docs
 """
 import hashlib
+import os
 import re
 from pathlib import Path
 
@@ -88,6 +89,9 @@ templates.env.globals.update(t=_t, wd=_wd, day_title=_title, ex=_ex, guide=_guid
 db.init_db()
 
 COOKIE = "fitcoach_token"
+
+# Нэг хэрэглэгч өдөрт хэдэн удаа AI дуудаж болох (API-ийн зардлыг хамгаална). Render-ийн Environment-д өөрчилж болно.
+LIMITS = {"chat": int(os.getenv("CHAT_DAILY_LIMIT", "50")), "fridge": int(os.getenv("FRIDGE_DAILY_LIMIT", "10"))}
 
 
 def current_user(request: Request):
@@ -255,6 +259,57 @@ def profile(request: Request):
                 nutrition=planner.nutrition(user))
 
 
+def _profile_error(request: Request, user: dict, key: str, status: int, form: str):
+    lang = i18n.from_request(request)
+    return page(request, "profile.html", "profile", status_code=status, user=user,
+                memories=db.get_memories(user["id"]), nutrition=planner.nutrition(user),
+                **{f"{form}_error": i18n.t(key, lang)})
+
+
+@app.post("/profile/password")
+def change_password(request: Request, current: str = Form(""), password: str = Form(""), password2: str = Form("")):
+    """Одоогийн нууц үгээ оруулж байж шинээр солино. Олон удаа буруу оруулбал нэвтрэхтэй адил түр хаана."""
+    user, redirect = need_user(request)
+    if redirect:
+        return redirect
+    if not user.get("password_hash"):  # демо хэрэглэгч
+        return _profile_error(request, user, "err.no_password", 400, "pw")
+    key = f"pw:{user['id']}"
+    if auth.locked(key):
+        return _profile_error(request, user, "err.too_many", 429, "pw")
+    if not auth.verify_password(current, user["password_hash"]):
+        auth.record_fail(key)
+        return _profile_error(request, user, "err.current_pw", 401, "pw")
+    if not auth.valid_password(password):
+        return _profile_error(request, user, "err.password_short", 400, "pw")
+    if password != password2:
+        return _profile_error(request, user, "js.pw_mismatch", 400, "pw")
+    auth.clear_fails(key)
+    db.set_password(user["id"], auth.hash_password(password))
+    return RedirectResponse("/profile?pw=1", status_code=303)
+
+
+@app.post("/profile/delete")
+def delete_account(request: Request, current: str = Form(""), confirm: str = Form("")):
+    """Бүртгэл болон бүх өгөгдлийг бүрмөсөн устгана. Нууц үгтэй бол нууц үгээр баталгаажуулна."""
+    user, redirect = need_user(request)
+    if redirect:
+        return redirect
+    if user.get("password_hash"):
+        key = f"pw:{user['id']}"
+        if auth.locked(key):
+            return _profile_error(request, user, "err.too_many", 429, "del")
+        if not auth.verify_password(current, user["password_hash"]):
+            auth.record_fail(key)
+            return _profile_error(request, user, "err.current_pw", 401, "del")
+    elif confirm != "yes":
+        return _profile_error(request, user, "err.choice", 400, "del")
+    db.delete_user(user["id"])
+    resp = RedirectResponse("/onboarding?deleted=1", status_code=303)
+    resp.delete_cookie(COOKIE)
+    return resp
+
+
 @app.post("/profile")
 def profile_save(
     request: Request, name: str = Form(...), age: int = Form(...), gender: str = Form(...),
@@ -335,6 +390,8 @@ def api_chat(body: ChatIn, request: Request):
     if not msg:
         return _err(request, "err.empty_msg")
     lang = i18n.from_request(request)
+    if not db.use_quota(user["id"], "chat", LIMITS["chat"]):
+        return _err(request, "err.limit", 429)
     result = coach.chat(user["id"], msg, lang)
     return {**result, "xp": xp.award(user["id"], "chat", db.today(), lang)}
 
@@ -354,6 +411,8 @@ async def api_fridge(request: Request, photo: UploadFile | None = File(None), in
             return _err(request, "err.photo_type")
     if not image and not ingredients.strip():
         return _err(request, "err.need_input")
+    if not db.use_quota(user["id"], "fridge", LIMITS["fridge"]):
+        return _err(request, "err.limit", 429)
     return fridge.analyze(user["id"], image, media, ingredients.strip(), i18n.from_request(request))
 
 

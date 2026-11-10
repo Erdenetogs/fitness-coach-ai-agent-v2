@@ -14,6 +14,12 @@ services:
         value: "3.12.7"
       - key: CLAUDE_MODEL
         value: claude-sonnet-5-5
+      - key: APP_TZ
+        value: Asia/Seoul   # "өнөөдөр"-ийг Солонгосын цагаар тооцно (сервер UTC)
+      - key: CHAT_DAILY_LIMIT
+        value: "50"         # нэг хэрэглэгч өдөрт хэдэн чат илгээж болох
+      - key: FRIDGE_DAILY_LIMIT
+        value: "10"         # өдөрт хэдэн удаа хөргөгчнөөс жор гаргах
       - key: ANTHROPIC_API_KEY
         sync: false   # Render-ийн dashboard дээр гараар оруулна. GitHub-д БҮҮ бич.
       - key: DATABASE_URL

@@ -8,7 +8,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from types import SimpleNamespace as NS
 
 # Тест бүр өөрийн түр өгөгдлийн сантай байна (app-ийг import хийхээс ӨМНӨ тохируулна)
@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app import db, planner, xp  # noqa: E402
 from app.agent import llm  # noqa: E402
+from app import main  # noqa: E402
 from app.main import app  # noqa: E402
 
 PROFILE = dict(name="Тест", age=21, gender="female", height_cm=165, weight_kg=62,
@@ -220,7 +221,7 @@ class XpTest(unittest.TestCase):
         _, uid = new_client()
         with db.conn() as con:  # SQLite, Postgres хоёуланд ажиллана
             for i in [0, 1, 2, 4]:  # 3 хоног дараалан + 1 тасарсан өдөр
-                d = (date.today() - timedelta(days=i)).isoformat()
+                d = (db.local_date() - timedelta(days=i)).isoformat()
                 con.execute("INSERT INTO xp_events (user_id, day, kind, amount, key) VALUES (?,?,?,?,?)",
                             (uid, d, "chat", 5, d))
         self.assertEqual(xp.streak(uid), 3)
@@ -267,7 +268,7 @@ class SecurityAndValidationTest(unittest.TestCase):
     def test_history_uses_local_date(self):
         _, uid = new_client()
         db.set_exercise_done(uid, "Суулт", True)
-        self.assertEqual(db.get_workout_history(uid, 1)[-1]["day"], date.today().isoformat())
+        self.assertEqual(db.get_workout_history(uid, 1)[-1]["day"], db.local_date().isoformat())
 
 
 class LanguageTest(unittest.TestCase):
@@ -371,7 +372,7 @@ class DemoUserTest(unittest.TestCase):
 
         prog = c.get("/api/progress").json()
         change = round(prog["weights"][-1]["kg"] - prog["weights"][0]["kg"], 1)
-        week_ago = (date.today() - timedelta(days=7)).isoformat()
+        week_ago = (db.local_date() - timedelta(days=7)).isoformat()
         trained = len([h for h in db.get_workout_history(uid, 7) if h["day"] >= week_ago])
         streak = c.get("/api/xp").json()["streak"]
         progress_msg = [m for m in db.get_messages(uid) if m["role"] == "assistant"][-1]["content"]
@@ -659,3 +660,89 @@ class GuardrailsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReviewFixesTest(unittest.TestCase):
+    """11/10-ны шалгалтаар олдсон: цагийн бүс, AI хязгаар, нууц үг солих, бүртгэл устгах, демо цэвэрлэгээ."""
+
+    def test_today_uses_app_timezone_not_server_utc(self):
+        self.assertEqual(db.TZ.key, os.getenv("APP_TZ", "Asia/Seoul"))
+        self.assertEqual(db.today(), datetime.now(db.TZ).date().isoformat())
+        self.assertEqual(planner.today_name(), planner.WEEKDAYS[db.local_date().weekday()])
+
+    def test_daily_ai_limit(self):
+        c, uid = new_client()
+        old = dict(main.LIMITS)
+        main.LIMITS.update(chat=2, fridge=1)
+        try:
+            self.assertEqual(c.post("/api/chat", json={"message": "сайн уу"}).status_code, 200)
+            self.assertEqual(c.post("/api/chat", json={"message": "сайн уу"}).status_code, 200)
+            r = c.post("/api/chat", json={"message": "сайн уу"})
+            self.assertEqual(r.status_code, 429)
+            self.assertIn("хязгаар", r.json()["error"])
+            self.assertEqual(db.get_usage(uid, "chat"), 2)
+            self.assertEqual(c.post("/api/fridge", data={"ingredients": "өндөг"}).status_code, 200)
+            self.assertEqual(c.post("/api/fridge", data={"ingredients": "өндөг"}).status_code, 429)
+            # хоосон мессеж хязгаарыг идэхгүй
+            self.assertEqual(c.post("/api/chat", json={"message": "  "}).status_code, 400)
+        finally:
+            main.LIMITS.update(old)
+
+    def test_change_password(self):
+        email = fresh_email()
+        c, uid = new_client(email=email)
+        self.assertIn('action="/profile/password"', c.get("/profile").text)
+        bad = c.post("/profile/password", data={"current": "wrong-one", "password": "new-pass-123",
+                                                "password2": "new-pass-123"})
+        self.assertEqual(bad.status_code, 401)
+        self.assertIn("Одоогийн нууц үг буруу", bad.text)
+        mismatch = c.post("/profile/password", data={"current": "secret-pass-1", "password": "new-pass-123",
+                                                     "password2": "new-pass-124"})
+        self.assertEqual(mismatch.status_code, 400)
+        ok = c.post("/profile/password", data={"current": "secret-pass-1", "password": "new-pass-123",
+                                               "password2": "new-pass-123"}, follow_redirects=False)
+        self.assertEqual((ok.status_code, ok.headers["location"]), (303, "/profile?pw=1"))
+        login = lambda pw: TestClient(app).post("/login", data={"email": email, "password": pw},
+                                                follow_redirects=False).status_code
+        self.assertEqual(login("secret-pass-1"), 401)
+        self.assertEqual(login("new-pass-123"), 303)
+
+    def test_delete_account_erases_everything(self):
+        email = fresh_email()
+        c, uid = new_client(email=email)
+        c.post("/api/chat", json={"message": "сайн уу"})
+        self.assertEqual(c.post("/profile/delete", data={"current": "wrong"}).status_code, 401)
+        self.assertIsNotNone(db.get_user(uid))
+        r = c.post("/profile/delete", data={"current": "secret-pass-1"}, follow_redirects=False)
+        self.assertEqual((r.status_code, r.headers["location"]), (303, "/onboarding?deleted=1"))
+        self.assertIsNone(db.get_user(uid))
+        self.assertIsNone(db.get_user_by_email(email))
+        with db.conn() as conn:
+            for table in db.USER_TABLES:
+                n = conn.execute(f"SELECT COUNT(*) AS n FROM {table} WHERE user_id=?", (uid,)).fetchone()["n"]
+                self.assertEqual(n, 0, table)
+        self.assertEqual(c.get("/", follow_redirects=False).status_code, 303)
+
+    def test_old_demo_users_are_cleaned_up(self):
+        c = TestClient(app)
+        c.post("/demo", follow_redirects=False)
+        old_uid = db.get_user_by_token(c.cookies.get("fitcoach_token"))["id"]
+        self.assertEqual(db.get_user(old_uid)["is_demo"], 1)
+        _, real_uid = new_client()
+        two_days_ago = (datetime.now(db.TZ) - timedelta(days=2)).replace(tzinfo=None).isoformat(timespec="seconds")
+        with db.conn() as conn:
+            conn.execute("UPDATE users SET created_at=? WHERE id IN (?, ?)", (two_days_ago, old_uid, real_uid))
+        TestClient(app).post("/demo", follow_redirects=False)  # шинэ демо үүсэхэд хуучныг цэвэрлэнэ
+        self.assertIsNone(db.get_user(old_uid))
+        self.assertIsNotNone(db.get_user(real_uid))  # жинхэнэ хэрэглэгчид хамаарахгүй
+
+    def test_demo_account_can_be_deleted_with_checkbox(self):
+        c = TestClient(app)
+        c.post("/demo", follow_redirects=False)
+        uid = db.get_user_by_token(c.cookies.get("fitcoach_token"))["id"]
+        page = c.get("/profile").text
+        self.assertNotIn('action="/profile/password"', page)
+        self.assertEqual(c.post("/profile/delete", data={}).status_code, 400)
+        self.assertEqual(c.post("/profile/delete", data={"confirm": "yes"}, follow_redirects=False).status_code, 303)
+        self.assertIsNone(db.get_user(uid))
+
