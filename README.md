@@ -18,7 +18,7 @@ uvicorn app.main:app --reload
 
 - Сайт: http://127.0.0.1:8000
 - Тест: `pip install -r requirements-dev.txt` → `python -m unittest -v` (PR бүрт GitHub Actions автоматаар ажиллуулна)
-- Сервер байршуулах: [DEPLOY.md](DEPLOY.md)
+- Сервер байршуулах: [docs/DEPLOY.md](docs/DEPLOY.md)
 - API туршилт: http://127.0.0.1:8000/docs
 
 `.env` дотор `ANTHROPIC_API_KEY` байхгүй бол агент **демо горим**-оор ажиллана: бодит хэрэгслүүдийг дуудаж өгөгдлийн санг өөрчилдөг ч хариуг энгийн дүрмээр гаргана. Түлхүүр тавимагц Claude жинхэнэ агент болж ажиллана.
@@ -26,6 +26,12 @@ uvicorn app.main:app --reload
 ## Бүтэц
 
 ```
+README.md            Энэ файл
+docs/
+  DATA.md            API-ийн хүсэлт/хариуны хэлбэр
+  DEPLOY.md          Render + Neon дээр байршуулах заавар
+  TEAM.md            Багийн ажлын төлөв, хуваарь
+tests/test_app.py    Автомат тестүүд
 app/
   main.py            Хуудас ба API route-ууд (FastAPI)
   db.py              Өгөгдлийн сан: локал дээр SQLite (fitcoach.db), DATABASE_URL байвал PostgreSQL (Neon)
@@ -36,7 +42,8 @@ app/
     coach.py         Чатын агент (tool-use loop) + демо горим
     fridge.py        Зураг → орц → жор (vision + structured output)
   i18n.py            Монгол / English / 한국어 орчуулга, хэл сонгох
-  guide.py           Дасгалын заавар: зураг (SVG шугаман хүн) + алхмууд, 3 хэлээр
+  demo.py            Демо хэрэглэгч (3 долоо хоногийн түүхтэй)
+  xp.py              XP, level, streak
   auth.py            Нэвтрэх: нууц үгийн hash (scrypt), имэйл шалгах, олон буруу оролдлогыг хаах
   templates/         Jinja2 хуудсууд (base.html + 7 хуудас, _sidebar.html = компьютерийн цэс)
   static/css/app.css Дизайн токенууд (Figma-тай ижил)
@@ -75,11 +82,13 @@ Coach хэрэглэгчтэй хамт "өсдөг" (санаа: Erdenetogs-и�
 
 ## Багийн ажлын хуваарь
 
-| Гишүүн | Гол файлууд | Branch |
-|---|---|---|
-| 1 — UI/UX | `templates/`, `static/css/app.css`, Figma | `frontend-ui` |
-| 2 — Frontend JS | `static/js/`, хуудас бүрийн `{% block scripts %}` | `frontend-js` |
-| 3 — Backend | `main.py`, `db.py`, deploy | `backend` |
-| 4 — AI агент | `agent/`, `planner.py` | `ai-agent` |
+| Гишүүн | Гол файлууд |
+|---|---|
+| 1 — UI/UX | `templates/`, `static/css/app.css`, Figma |
+| 2 — Frontend JS | `static/js/`, хуудас бүрийн `{% block scripts %}` |
+| 3 — Backend | `main.py`, `db.py`, deploy |
+| 4 — AI агент | `agent/`, `planner.py` |
 
-API-ийн хүсэлт/хариуны хэлбэрийг [DATA.md](DATA.md)-аас харна. Хэлбэр өөрчлөх бол DATA.md-г шинэчлээд багтаа мэдэгдэнэ.
+**Ажиллах дүрэм:** `main`-аас богино настай branch үүсгэнэ (`feature/...`, `fix/...`) → PR → тест ногоон болмогц merge → branch-аа устгана. Дэлгэрэнгүй: [docs/TEAM.md](docs/TEAM.md).
+
+API-ийн хүсэлт/хариуны хэлбэрийг [docs/DATA.md](docs/DATA.md)-аас харна. Хэлбэр өөрчлөх бол түүнийг шинэчлээд багтаа мэдэгдэнэ.
