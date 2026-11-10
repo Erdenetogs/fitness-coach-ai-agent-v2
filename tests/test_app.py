@@ -192,7 +192,7 @@ class XpTest(unittest.TestCase):
         self.assertEqual(xp.from_total(99)["level"], 1)
         self.assertEqual(xp.from_total(100)["level"], 2)
         self.assertEqual(xp.from_total(300)["level"], 3)
-        self.assertEqual(xp.from_total(1000)["stage"], "Тамирчин")
+        self.assertEqual(xp.from_total(1000)["stage"], "Загвар 3")
 
     def test_chat_xp_once_per_day(self):
         c, _ = new_client()
@@ -312,7 +312,7 @@ class LanguageTest(unittest.TestCase):
         self.assertEqual(c.post("/api/chat", json={"message": " "}).json()["error"], "메시지가 비어 있어요")
         r = c.post("/api/recipes", json={"recipe": {"title": "오믈렛", "kcal": 300}}).json()
         self.assertEqual(r["xp"]["reason"], "식사 기록")
-        self.assertEqual(r["xp"]["stage"], "씨앗")
+        self.assertEqual(r["xp"]["stage"], "모델 1")
 
     def test_every_string_has_three_languages(self):
         from app import i18n
@@ -516,6 +516,29 @@ class GuideCheerThemeTest(unittest.TestCase):
         self.assertIn("fitcoach_theme", page)  # хуудас зурагдахаас өмнө сонголтыг уншдаг script
         for path in ("/", "/workout", "/food", "/progress", "/profile", "/chat"):
             self.assertNotRegex(c.get(path).text, r'class="[^"]*\bbg-white(?![/\w-])(?![^"]*text-\[#16213a\])')
+
+
+class MascotTest(unittest.TestCase):
+    def test_robot_changes_with_stage_and_goal(self):
+        from app import mascot
+        self.assertEqual([mascot.stage_of(l) for l in (1, 2, 3, 5, 8, 20)], [1, 1, 2, 3, 4, 4])
+        pics = {(lv, g): str(mascot.svg(60, lv, g)) for lv in (1, 3, 5, 8) for g in ("lose", "gain", "fit", None)}
+        self.assertEqual(len({pics[(lv, "gain")] for lv in (1, 3, 5, 8)}), 4)       # шат бүр өөр зураг
+        self.assertEqual(len({pics[(5, g)] for g in ("lose", "gain", "fit")}), 3)   # зорилго бүр өөр төрөл
+        self.assertIn('aria-hidden="true"', pics[(1, None)])
+        self.assertIn("&lt;", str(mascot.svg(60, 1, None, "<b>")))                   # label escape хийгдэнэ
+
+    def test_pages_show_robot_for_users_goal(self):
+        c, _ = new_client(goal="fit")
+        page = c.get("/").text
+        self.assertIn('aria-label="AI дасгалжуулагч, level 1"', page)
+        self.assertIn(mascot_accent("fit"), page)
+        self.assertIn("Загвар 1", page)
+
+
+def mascot_accent(goal):
+    from app import mascot
+    return mascot.ACCENT[goal]
 
 
 class StaticCacheTest(unittest.TestCase):

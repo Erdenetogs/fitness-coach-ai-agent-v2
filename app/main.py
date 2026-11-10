@@ -22,7 +22,7 @@ from jinja2 import pass_context
 from markupsafe import Markup, escape
 from pydantic import BaseModel
 
-from app import auth, db, demo, guide, i18n, planner, xp
+from app import auth, db, demo, guide, i18n, mascot, planner, xp
 from app.agent import coach, fridge, llm
 
 BASE = Path(__file__).parent
@@ -83,7 +83,7 @@ def _guide(ctx, name):
     return guide.get(name, ctx.get("lang", i18n.DEFAULT))
 
 
-templates.env.globals.update(t=_t, wd=_wd, day_title=_title, ex=_ex, guide=_guide)
+templates.env.globals.update(t=_t, wd=_wd, day_title=_title, ex=_ex, guide=_guide, mascot=mascot.svg)
 
 db.init_db()
 
@@ -399,7 +399,9 @@ def _cheer(user: dict, gained: dict, lang: str) -> dict:
     if streak >= 2:
         stats.append(i18n.t("cheer.stat_streak", lang, n=streak))
     stats.append(i18n.t("cheer.stat_week", lang, n=week))
-    return {"title": title, "text": f"{body} {tip}", "stats": stats, "level": gained["level"]}
+    # Level ахисан бол шинэ шатны роботыг харуулна (хуудсан дээрх нь хуучин level-ийнх)
+    return {"title": title, "text": f"{body} {tip}", "stats": stats, "level": gained["level"],
+            "avatar": str(mascot.svg(96, gained["level"], user.get("goal")))}
 
 
 @app.post("/api/weight")

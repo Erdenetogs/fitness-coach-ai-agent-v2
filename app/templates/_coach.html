@@ -1,18 +1,7 @@
-{# Coach-ийн дүрс: level бүрт нэг навч (5 хүртэл), level 5-аас толгойн тууз.
-   Санаа: Erdenetogs-ийн Spring Boot хувилбар.
+{# Coach-ийн дүрс: робот. Зургийг app/mascot.py гаргана (шат = level-ээс, төрөл = хэрэглэгчийн зорилгоос).
    Хэрэглэх: {% from '_coach.html' import avatar with context %}{{ avatar(56, coach.level) }} #}
 {% macro avatar(size, level) -%}
-{% set leaves = [[level, 1]|max, 5]|min %}
-<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 200 200" role="img" aria-label="{{ t('coach.avatar_aria', level=level) }}" class="flex-none">
-  {% for i in range(leaves) %}
-  <path transform="rotate({{ (i - (leaves - 1) / 2) * 26 }} 100 108)" d="M100 36 C86 14 106 2 120 12 C118 26 110 34 100 36Z" fill="#17a673"/>
-  {% endfor %}
-  <circle cx="100" cy="108" r="76" fill="#ddf4ea" stroke="#17a673" stroke-width="5"/>
-  {% if level >= 5 %}<rect x="34" y="64" width="132" height="15" rx="7.5" fill="#ff6b4a"/>{% endif %}
-  <circle cx="74" cy="104" r="9" fill="#16213a"/><circle cx="126" cy="104" r="9" fill="#16213a"/>
-  <path d="M78 132 Q100 152 122 132" stroke="#16213a" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <circle cx="56" cy="128" r="9" fill="#ffc2b4"/><circle cx="144" cy="128" r="9" fill="#ffc2b4"/>
-</svg>
+{{ mascot(size, level, user.goal if user else none, t('coach.avatar_aria', level=level)) }}
 {%- endmacro %}
 
 {# Нүүр ба профайл дээрх level карт #}

@@ -156,6 +156,7 @@
     document.getElementById("cheer-stats").innerHTML = c.stats
       .map((s) => `<li class="num text-[12.5px] font-semibold rounded-full bg-track-soft text-track px-3 py-1.5">${escapeHtml(s)}</li>`).join("");
     const av = document.getElementById("cheer-avatar");
+    if (c.avatar) av.innerHTML = c.avatar;  // серверийн зурсан SVG (хэрэглэгчийн текст агуулаагүй)
     av.classList.remove("cheer-pop"); void av.offsetWidth; av.classList.add("cheer-pop");
     cheerDlg.showModal();
   }
