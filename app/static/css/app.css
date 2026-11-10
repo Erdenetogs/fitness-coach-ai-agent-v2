@@ -1,15 +1,47 @@
 /* FitCoach дизайн токенууд — Figma дахь "FitCoach Design System"-тэй ижил утгатай */
+/* Өнгө бүр "r g b" сувгаар (--x-rgb) — Tailwind-ийн bg-ink/50 гэх мэт тунгалагшилтад хэрэгтэй.
+   Харанхуй горимд зөвхөн -rgb утгууд солигдоно; var(--ink) гэх мэт нь өөрөө дагана. */
 :root {
-  --ink: #16213a;       /* Үндсэн текст, харанхуй гадаргуу */
-  --ink-2: #5b6680;     /* Хоёрдогч текст */
-  --paper: #eef1f6;     /* Дэвсгэр */
-  --surface: #ffffff;   /* Карт */
-  --line: #dde2ec;      /* Хүрээ */
-  --track: #2d5bff;     /* Үндсэн үйлдэл (товч, линк) */
-  --track-soft: #e4eaff;
-  --pulse: #ff6b4a;     /* Өнөөдөр, анхаарал */
-  --mint: #17a673;      /* Дууссан */
-  --mint-soft: #ddf4ea;
+  --ink-rgb: 22 33 58;          /* Үндсэн текст */
+  --ink-2-rgb: 91 102 128;      /* Хоёрдогч текст */
+  --paper-rgb: 238 241 246;     /* Дэвсгэр */
+  --surface-rgb: 255 255 255;   /* Карт */
+  --line-rgb: 221 226 236;      /* Хүрээ */
+  --track-rgb: 45 91 255;       /* Линк, идэвхтэй текст */
+  --track-strong-rgb: 45 91 255;/* Үндсэн товчны дэвсгэр (цагаан тексттэй) */
+  --track-soft-rgb: 228 234 255;
+  --pulse-rgb: 255 107 74;      /* Өнөөдөр, анхаарал */
+  --mint-rgb: 23 166 115;       /* Дууссан */
+  --mint-soft-rgb: 221 244 234;
+  --mint-ink-rgb: 14 122 83;    /* mint-soft дээрх текст */
+  --hero-rgb: 22 33 58;         /* Бараан гадаргуу: цэс, нүүрний гол карт, toast */
+  --bubble-rgb: 22 33 58;       /* Хэрэглэгчийн чатын хөөс */
+
+  --ink: rgb(var(--ink-rgb)); --ink-2: rgb(var(--ink-2-rgb)); --paper: rgb(var(--paper-rgb));
+  --surface: rgb(var(--surface-rgb)); --line: rgb(var(--line-rgb)); --track: rgb(var(--track-rgb));
+  --track-strong: rgb(var(--track-strong-rgb)); --track-soft: rgb(var(--track-soft-rgb));
+  --pulse: rgb(var(--pulse-rgb)); --mint: rgb(var(--mint-rgb)); --mint-soft: rgb(var(--mint-soft-rgb));
+  --hero: rgb(var(--hero-rgb));
+  color-scheme: light;
+}
+
+/* Харанхуй горим. Хоёр газар давтагдсан шалтгаан: (1) хэрэглэгч "Харанхуй" сонгосон,
+   (2) "Системийнхээр" дээр байгаа бөгөөд төхөөрөмж нь харанхуй. Утгыг өөрчлөх бол ХОЁУЛАНГ нь өөрчил. */
+:root[data-theme="dark"] {
+  --ink-rgb: 232 236 245; --ink-2-rgb: 152 163 189; --paper-rgb: 12 17 30; --surface-rgb: 23 30 48;
+  --line-rgb: 43 53 78; --track-rgb: 128 156 255; --track-strong-rgb: 45 91 255; --track-soft-rgb: 30 42 82;
+  --mint-rgb: 46 196 140; --mint-soft-rgb: 20 56 46; --mint-ink-rgb: 122 230 184;
+  --hero-rgb: 27 37 64; --bubble-rgb: 42 63 143;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink-rgb: 232 236 245; --ink-2-rgb: 152 163 189; --paper-rgb: 12 17 30; --surface-rgb: 23 30 48;
+    --line-rgb: 43 53 78; --track-rgb: 128 156 255; --track-strong-rgb: 45 91 255; --track-soft-rgb: 30 42 82;
+    --mint-rgb: 46 196 140; --mint-soft-rgb: 20 56 46; --mint-ink-rgb: 122 230 184;
+    --hero-rgb: 27 37 64; --bubble-rgb: 42 63 143;
+    color-scheme: dark;
+  }
 }
 
 html { -webkit-tap-highlight-color: transparent; }
@@ -38,10 +70,10 @@ html[lang="ko"] body { word-break: keep-all; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; font-weight: 600;
   border-radius: 14px; padding: .8rem 1.1rem; transition: transform .12s ease, background-color .12s ease; }
 .btn:active { transform: scale(.98); }
-.btn-primary { background: var(--track); color: #fff; }
+.btn-primary { background: var(--track-strong); color: #fff; }
 .btn-primary:hover { background: #1f48e6; }
 .btn-ghost { background: var(--track-soft); color: var(--track); }
-.btn-dark { background: var(--ink); color: #fff; }
+.btn-dark { background: var(--ink); color: var(--surface); }
 
 .field { width: 100%; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px;
   padding: .7rem .85rem; font-size: 16px; color: var(--ink); }
@@ -58,7 +90,7 @@ html[lang="ko"] body { word-break: keep-all; }
 :focus-visible { outline: 2.5px solid var(--track); outline-offset: 2px; }
 
 /* Доод цэс */
-.tabbar a { color: #8a93a8; }
+.tabbar a { color: var(--ink-2); }
 .tabbar a[aria-current="page"] { color: var(--ink); }
 .tabbar a[aria-current="page"] .msr { font-variation-settings: "FILL" 1, "wght" 600, "GRAD" 0, "opsz" 24; }
 
@@ -69,7 +101,7 @@ html[lang="ko"] body { word-break: keep-all; }
 .side-link[aria-current="page"] { background: rgba(255,255,255,.12); color: #fff; }
 .side-link[aria-current="page"] .msr { font-variation-settings: "FILL" 1, "wght" 600, "GRAD" 0, "opsz" 24; }
 .side-chat { display: flex; align-items: center; gap: .75rem; padding: .75rem .9rem; border-radius: 14px;
-  background: var(--track); color: #fff; font-weight: 600; }
+  background: var(--track-strong); color: #fff; font-weight: 600; }
 .side-chat:hover { background: #1f48e6; }
 .side-chat[aria-current="page"] { box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
 .coach-dock { display: block; padding: 1rem; border-radius: 18px; background: rgba(255,255,255,.06); }
@@ -78,21 +110,23 @@ html[lang="ko"] body { word-break: keep-all; }
 
 /* Хэл солих товч */
 .lang-switch { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
-.lang-switch a { min-width: 2.4rem; text-align: center; padding: .3rem .6rem; border-radius: 999px;
+.lang-switch a, .lang-switch button { min-width: 2.4rem; text-align: center; padding: .3rem .6rem; border-radius: 999px;
   font-size: 12.5px; font-weight: 600; color: var(--ink-2); line-height: 1.4; }
-.lang-switch a:hover { color: var(--ink); }
-.lang-switch a[aria-current="true"] { background: var(--ink); color: #fff; }
+.lang-switch a:hover, .lang-switch button:hover { color: var(--ink); }
+.lang-switch button { display: inline-flex; align-items: center; justify-content: center; gap: .3rem; }
+.lang-switch button .msr { font-size: 17px; }
+.lang-switch a[aria-current="true"], .lang-switch button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
 .lang-dark { background: rgba(255,255,255,.08); border-color: transparent; }
-.lang-dark a { color: rgba(255,255,255,.65); }
-.lang-dark a:hover { color: #fff; }
-.lang-dark a[aria-current="true"] { background: #fff; color: var(--ink); }
+.lang-dark a, .lang-dark button { color: rgba(255,255,255,.65); }
+.lang-dark a:hover, .lang-dark button:hover { color: #fff; }
+.lang-dark a[aria-current="true"], .lang-dark button[aria-pressed="true"] { background: #fff; color: #16213a; }
 
 /* Агентын алхам — агент юу хийснийг харуулах жижиг мөрүүд */
 .step { display: flex; align-items: center; gap: .45rem; font-size: 12.5px; color: var(--ink-2); }
 .step .msr { font-size: 16px; color: var(--track); }
 
 /* Дасгалын checkbox */
-.tick { appearance: none; width: 28px; height: 28px; border-radius: 9px; border: 2px solid var(--line); background: #fff;
+.tick { appearance: none; width: 28px; height: 28px; border-radius: 9px; border: 2px solid var(--line); background: var(--surface);
   display: grid; place-items: center; cursor: pointer; flex: none; transition: background .15s ease, border-color .15s ease; }
 .tick:checked { background: var(--mint); border-color: var(--mint); }
 .tick:checked::after { content: ""; width: 7px; height: 13px; border: solid #fff; border-width: 0 2.5px 2.5px 0;
@@ -105,11 +139,23 @@ html[lang="ko"] body { word-break: keep-all; }
 .ring-bar { stroke: var(--pulse); transition: stroke-dashoffset .6s cubic-bezier(.3,.7,.2,1); }
 
 /* Чатын хөөс */
-.bubble-user { background: var(--ink); color: #fff; border-radius: 18px 18px 6px 18px; }
+.bubble-user { background: rgb(var(--bubble-rgb)); color: #fff; border-radius: 18px 18px 6px 18px; }
 .bubble-ai { background: var(--surface); border: 1px solid var(--line); border-radius: 18px 18px 18px 6px; }
 .typing span { width: 6px; height: 6px; border-radius: 9px; background: var(--ink-2); display: inline-block; animation: blink 1.2s infinite; }
 .typing span:nth-child(2) { animation-delay: .2s; } .typing span:nth-child(3) { animation-delay: .4s; }
 @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+/* Дасгалын заавар, урамшууллын цонх (<dialog>) */
+dialog.sheet { background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 24px;
+  padding: 0; width: min(92vw, 26rem); max-height: 88vh; overflow: auto; }
+dialog.sheet::backdrop { background: rgba(8, 12, 24, .55); }
+.guide-btn { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; flex: none; color: var(--ink-2); }
+.guide-btn:hover { background: var(--paper); color: var(--track); }
+/* Зургийн хүн: гол шугам текстийн өнгөөр, арын гар хөл бүдэг, жин/багаж цэнхэр */
+.pose { color: var(--ink); background: var(--paper); border-radius: 16px; }
+.pose .floor { stroke: var(--line); } .pose .prop { stroke: var(--ink-2); } .pose .weight { fill: var(--track); stroke: var(--track); }
+.cheer-pop { animation: cheer-pop .6s cubic-bezier(.2, 1.4, .4, 1) both; }
+@keyframes cheer-pop { from { transform: scale(.4) rotate(-12deg); opacity: 0; } to { transform: none; opacity: 1; } }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

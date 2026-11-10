@@ -97,7 +97,7 @@
     // AI-ийн хариуг шууд HTML-д хийхгүй: текстийг escape, тоог Number() болгоно
     const list = (x) => (Array.isArray(x) ? x : []);
     const num = (x) => (Number.isFinite(Number(x)) ? Number(x) : "–");
-    const chips = list(d.ingredients).map((i) => `<span class="text-[13px] bg-mint-soft text-[#0e7a53] rounded-full px-2.5 py-1">${escapeHtml(i)}</span>`).join("");
+    const chips = list(d.ingredients).map((i) => `<span class="text-[13px] bg-mint-soft text-mint-ink rounded-full px-2.5 py-1">${escapeHtml(i)}</span>`).join("");
     const cards = list(d.recipes).map((r, i) => `
       <article class="card p-4 lg:p-5">
         <div class="flex items-start justify-between gap-3">

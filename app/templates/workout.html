@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from '_coach.html' import avatar with context %}
 {% block title %}{{ t('page.workout') }}{% endblock %}
 {% block content %}
 <header class="px-5 pt-8 pb-4 lg:pt-12 lg:pb-6">
@@ -24,9 +25,9 @@
   <section role="tabpanel" id="day-{{ loop.index0 }}" aria-labelledby="tab-{{ loop.index0 }}" class="day-panel {{ '' if is_today else 'hidden' }}">
     {% if p.exercises %}
     <ul class="space-y-2.5 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
-      {% for e in p.exercises %}{% set is_done = is_today and e.name in done %}
-      <li>
-        <label class="row p-3.5 lg:p-4 flex items-center gap-3.5 {{ 'done-row' if is_done }} {{ 'cursor-pointer' if is_today }}">
+      {% for e in p.exercises %}{% set is_done = is_today and e.name in done %}{% set g = guide(e.name) %}
+      <li class="row flex items-center pr-1.5">
+        <label class="flex-1 min-w-0 p-3.5 lg:p-4 flex items-center gap-3.5 {{ 'done-row' if is_done }} {{ 'cursor-pointer' if is_today }}">
           <span class="w-12 h-12 rounded-xl bg-track-soft text-track grid place-items-center flex-none"><span class="msr text-[24px]">{{ e.icon or 'fitness_center' }}</span></span>
           <span class="flex-1 min-w-0">
             <span class="ex-name block font-semibold">{{ ex(e.name) }}</span>
@@ -38,6 +39,10 @@
           <input type="checkbox" class="tick" data-exercise="{{ e.name }}" {{ 'checked' if is_done }} aria-label="{{ t('wo.done_aria', name=ex(e.name)) }}">
           {% endif %}
         </label>
+        {# Заавар: зураг + алхмууд. Агентын зохиосон, санд байхгүй дасгалд товч гарахгүй. #}
+        {% if g %}
+        <button type="button" class="guide-btn" data-guide="{{ g.key }}" data-name="{{ ex(e.name) }}" aria-label="{{ t('wo.guide_aria', name=ex(e.name)) }}" title="{{ t('wo.guide_aria', name=ex(e.name)) }}"><span class="msr text-[22px]">help</span></button>
+        {% endif %}
       </li>
       {% endfor %}
     </ul>
@@ -61,6 +66,45 @@
     <span class="msr text-ink-2">chevron_right</span>
   </a>
 </main>
+
+{# Зааврын агуулга — түлхүүр бүрээр нэг удаа. JS үүнийг цонхонд хуулж харуулна. #}
+{% set ns = namespace(seen=[]) %}
+{% for d in WEEKDAYS %}{% for e in plan.get(d, {}).get('exercises', []) %}{% set g = guide(e.name) %}
+{% if g and g.key not in ns.seen %}{% set _ = ns.seen.append(g.key) %}
+<template id="guide-{{ g.key }}">
+  {{ g.svg }}
+  {% if g.hold %}<p class="text-ink-2 text-[12.5px] text-center mt-2">{{ t('wo.guide_hold') }}</p>{% endif %}
+  <ol class="mt-4 space-y-2.5">
+    {% for s in g.steps %}
+    <li class="flex gap-3"><span class="num flex-none w-6 h-6 rounded-full bg-track-soft text-track text-[12px] font-semibold grid place-items-center">{{ loop.index }}</span><span>{{ s }}</span></li>
+    {% endfor %}
+  </ol>
+  <p class="mt-4 rounded-xl bg-mint-soft text-mint-ink text-[14px] px-3.5 py-2.5"><b>{{ t('wo.guide_tip') }}:</b> {{ g.tip }}</p>
+</template>
+{% endif %}{% endfor %}{% endfor %}
+
+<dialog id="guide-dialog" class="sheet" aria-labelledby="guide-title">
+  <div class="p-5">
+    <div class="flex items-start justify-between gap-3 mb-4">
+      <h2 id="guide-title" class="font-display text-[19px] font-semibold leading-tight"></h2>
+      <button type="button" class="guide-btn -mt-1 -mr-1" data-close aria-label="{{ t('btn.close') }}"><span class="msr">close</span></button>
+    </div>
+    <div id="guide-body"></div>
+  </div>
+</dialog>
+
+<dialog id="cheer-dialog" class="sheet" aria-labelledby="cheer-title">
+  <div class="p-6 text-center">
+    <div id="cheer-avatar" class="inline-block">{{ avatar(96, coach.level) }}</div>
+    <h2 id="cheer-title" class="font-display text-[22px] font-semibold leading-tight mt-3"></h2>
+    <p id="cheer-text" class="text-ink-2 mt-2"></p>
+    <ul id="cheer-stats" class="flex flex-wrap justify-center gap-2 mt-4"></ul>
+    <div class="grid grid-cols-2 gap-2.5 mt-6">
+      <button type="button" class="btn btn-ghost" data-close>{{ t('btn.close') }}</button>
+      <a href="/chat" class="btn btn-primary">{{ t('cheer.chat') }}</a>
+    </div>
+  </div>
+</dialog>
 {% endblock %}
 
 {% block scripts %}
@@ -72,7 +116,7 @@
       const on = k === i;
       tab.setAttribute("aria-selected", on);
       tab.className = "day-tab flex-none rounded-2xl px-3.5 py-2 text-left border transition-colors " +
-        (on ? "bg-ink text-white border-ink" : "bg-white text-ink border-line");
+        (on ? "bg-ink text-white border-transparent" : "bg-surface text-ink border-line");
       panels[k].classList.toggle("hidden", !on);
     });
   }
@@ -89,12 +133,35 @@
         const data = await api("/api/workout/done", { json: { exercise: box.dataset.exercise, done: box.checked } });
         const all = document.querySelectorAll(".day-panel:not(.hidden) .tick");
         const n = [...all].filter((b) => b.checked).length;
-        if (data.xp) showXp(data.xp);
+        if (data.cheer) showCheer(data.cheer);
+        else if (data.xp) showXp(data.xp);
         else if (box.checked) toast(n === all.length ? t("js.wo_all") : t("js.wo_n", { n, all: all.length }));
       } catch (e) {
         box.checked = !box.checked; row.classList.toggle("done-row", box.checked); toast(e.message);
       }
     });
+  });
+
+  // ---- Заавар ба урамшууллын цонх ----
+  const guideDlg = document.getElementById("guide-dialog");
+  const cheerDlg = document.getElementById("cheer-dialog");
+  document.querySelectorAll(".guide-btn[data-guide]").forEach((btn) => btn.addEventListener("click", () => {
+    document.getElementById("guide-title").textContent = btn.dataset.name;
+    document.getElementById("guide-body").replaceChildren(document.getElementById("guide-" + btn.dataset.guide).content.cloneNode(true));
+    guideDlg.showModal();
+  }));
+  function showCheer(c) {
+    document.getElementById("cheer-title").textContent = c.title;
+    document.getElementById("cheer-text").textContent = c.text;
+    document.getElementById("cheer-stats").innerHTML = c.stats
+      .map((s) => `<li class="num text-[12.5px] font-semibold rounded-full bg-track-soft text-track px-3 py-1.5">${escapeHtml(s)}</li>`).join("");
+    const av = document.getElementById("cheer-avatar");
+    av.classList.remove("cheer-pop"); void av.offsetWidth; av.classList.add("cheer-pop");
+    cheerDlg.showModal();
+  }
+  [guideDlg, cheerDlg].forEach((dlg) => {
+    dlg.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => dlg.close()));
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });  // гадна талд дарвал хаана
   });
 </script>
 {% endblock %}

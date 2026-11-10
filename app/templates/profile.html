@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 {% from '_coach.html' import level_card with context %}
-{% from '_lang.html' import switcher with context %}
+{% from '_lang.html' import switcher, theme_switcher with context %}
 {% block title %}{{ t('page.profile') }}{% endblock %}
 {% block content %}
 <header class="px-5 pt-8 pb-4 lg:pt-12 lg:pb-6 flex items-center gap-3">
@@ -14,7 +14,7 @@
 {# Компьютер дээр: зүүн талд мэдээлэл засах, баруун талд санах ой, тооцоо, хэл #}
 <main class="px-5 space-y-4 lg:space-y-0 lg:grid lg:grid-cols-12 lg:gap-5 lg:items-start">
   {% if request.query_params.get('saved') %}
-  <p class="rounded-xl bg-mint-soft text-[#0e7a53] text-sm px-4 py-2.5 lg:col-span-12" role="status">{{ t('pf.saved') }}</p>
+  <p class="rounded-xl bg-mint-soft text-mint-ink text-sm px-4 py-2.5 lg:col-span-12" role="status">{{ t('pf.saved') }}</p>
   {% endif %}
 
   <div class="space-y-4 lg:col-span-7">
@@ -57,6 +57,11 @@
     <section class="card p-4 lg:p-5 flex items-center justify-between gap-3">
       <h2 class="font-semibold">{{ t('lang.label') }}</h2>
       {{ switcher() }}
+    </section>
+
+    <section class="card p-4 lg:p-5 flex items-center justify-between gap-3 flex-wrap">
+      <h2 class="font-semibold">{{ t('theme.label') }}</h2>
+      {{ theme_switcher() }}
     </section>
 
     <section class="card p-4 lg:p-5" id="memory">

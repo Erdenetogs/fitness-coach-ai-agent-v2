@@ -54,12 +54,23 @@
   const chart = typeof Chart === "undefined" ? null : new Chart(ctx, {
     type: "line",
     data: { labels: weights.map((w) => w.day.slice(5)), datasets: [{
-      data: weights.map((w) => w.kg), borderColor: "#2d5bff", backgroundColor: "rgba(45,91,255,.08)",
-      fill: true, tension: .35, pointRadius: 3.5, pointBackgroundColor: "#2d5bff", borderWidth: 2.5 }] },
+      data: weights.map((w) => w.kg), fill: true, tension: .35, pointRadius: 3.5, borderWidth: 2.5 }] },
     options: { maintainAspectRatio: false, plugins: { legend: { display: false } },
-      scales: { x: { grid: { display: false }, ticks: { color: "#5b6680" } },
-                y: { grid: { color: "#eef1f6" }, ticks: { color: "#5b6680" }, grace: 1 } } },
+      scales: { x: { grid: { display: false }, ticks: {} }, y: { grid: {}, ticks: {}, grace: 1 } } },
   });
+  // Графикийн өнгийг CSS хувьсагчаас авна — харагдац (цайвар/харанхуй) солигдоход дагаж өөрчлөгдөнө
+  function paintChart() {
+    if (!chart) return;
+    const ds = chart.data.datasets[0], sc = chart.options.scales;
+    ds.borderColor = ds.pointBackgroundColor = cssColor("track");
+    ds.backgroundColor = cssColor("track", .1);
+    sc.x.ticks.color = sc.y.ticks.color = cssColor("ink-2");
+    sc.y.grid.color = cssColor("line");
+    chart.update("none");
+  }
+  paintChart();
+  document.addEventListener("themechange", paintChart);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paintChart);
 
   // Орон нутгийн огноо (YYYY-MM-DD). toISOString() нь UTC тул Солонгост өглөө 9-өөс өмнө өчигдрийг өгдөг.
   const localDay = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
