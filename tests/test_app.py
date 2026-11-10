@@ -23,7 +23,8 @@ from app.agent import llm  # noqa: E402
 from app.main import app  # noqa: E402
 
 PROFILE = dict(name="Тест", age=21, gender="female", height_cm=165, weight_kg=62,
-               goal="lose", level="beginner", days_per_week=6, equipment="none", password="secret-pass-1")
+               goal="lose", level="beginner", days_per_week=6, equipment="none", password="secret-pass-1",
+               password2="secret-pass-1")
 _emails = iter(range(10 ** 6))
 
 
@@ -431,7 +432,8 @@ class LoginTest(unittest.TestCase):
     def test_signup_validates_email_and_password(self):
         email = fresh_email()
         new_client(email=email)
-        cases = [({"email": "not-an-email"}, 400), ({"password": "short"}, 400), ({"email": email}, 409)]
+        cases = [({"email": "not-an-email"}, 400), ({"password": "short", "password2": "short"}, 400),
+                 ({"password2": "secret-pass-2"}, 400), ({"email": email}, 409)]
         for override, status in cases:
             with self.subTest(override=override):
                 data = {**PROFILE, "email": fresh_email(), **override}

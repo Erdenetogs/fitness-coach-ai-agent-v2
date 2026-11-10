@@ -140,7 +140,7 @@ def onboarding_submit(
     request: Request, name: str = Form(...), age: int = Form(...), gender: str = Form(...),
     height_cm: float = Form(...), weight_kg: float = Form(...), goal: str = Form(...),
     level: str = Form(...), days_per_week: int = Form(...), equipment: str = Form(...),
-    email: str = Form(...), password: str = Form(...),
+    email: str = Form(...), password: str = Form(...), password2: str = Form(...),
 ):
     lang = i18n.from_request(request)
     data = validate_profile(name, age, gender, height_cm, goal, level, days_per_week, equipment, weight_kg, lang)
@@ -149,6 +149,8 @@ def onboarding_submit(
         raise HTTPException(400, i18n.t("err.email", lang))
     if not auth.valid_password(password):
         raise HTTPException(400, i18n.t("err.password_short", lang))
+    if password != password2:
+        raise HTTPException(400, i18n.t("js.pw_mismatch", lang))
     if db.get_user_by_email(email):
         raise HTTPException(409, i18n.t("err.email_taken", lang))
     try:
