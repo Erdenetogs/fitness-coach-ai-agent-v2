@@ -136,6 +136,13 @@
           <input class="field" id="password" name="password" type="password" required minlength="8" maxlength="128" autocomplete="new-password" aria-describedby="pw-hint">
           <p id="pw-hint" class="text-ink-2 text-[12.5px] mt-1.5">{{ t('f.password_hint') }}</p>
         </div>
+        <div>
+          <label class="label" for="password2">{{ t('f.password2') }}</label>
+          <input class="field" id="password2" name="password2" type="password" required maxlength="128" autocomplete="new-password">
+        </div>
+        <label class="flex items-center gap-2.5 text-[14px] text-ink-2">
+          <input type="checkbox" id="pw-show" class="w-4 h-4 accent-[#2d5bff]">{{ t('f.password_show') }}
+        </label>
       </section>
 
       <p id="ob-error" class="text-sm text-pulse mt-4 min-h-[1.25rem]" role="alert"></p>
@@ -188,8 +195,16 @@
         err.textContent = t("js.ob_invalid", { label: inp.labels[0]?.textContent || t("js.value") }); inp.focus(); return false;
       }
     }
+    // Нууц үгийг хоёр удаа ижил бичсэн эсэх (буруу бичээд акаунтаасаа түгжигдэхээс сэргийлнэ)
+    const pw2 = steps[i].querySelector("#password2");
+    if (pw2 && pw2.value !== document.getElementById("password").value) {
+      err.textContent = t("js.pw_mismatch"); pw2.focus(); return false;
+    }
     return true;
   }
+  document.getElementById("pw-show").addEventListener("change", (e) => {
+    ["password", "password2"].forEach((id) => (document.getElementById(id).type = e.target.checked ? "text" : "password"));
+  });
 
   next.addEventListener("click", () => {
     if (!valid(cur)) return;
