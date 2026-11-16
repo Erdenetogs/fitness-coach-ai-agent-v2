@@ -317,7 +317,6 @@ STRINGS: dict[str, tuple[str, str, str]] = {
     "ch.q2": ("Жин 64.5 кг боллоо", "My weight is 64.5 kg now", "체중이 64.5kg이 됐어"),
     "ch.q3": ("Өдөрт хэдэн калори идэх вэ?", "How many calories should I eat a day?", "하루에 몇 칼로리 먹어야 해?"),
     "ch.q4": ("Энэ долоо хоногийн явц хэр байна?", "How's my progress this week?", "이번 주 진행 상황은 어때?"),
-    "ch.q6": ("Зүүн өвдөг өвдөж байна", "My left knee hurts", "왼쪽 무릎이 아파"),
     "ch.msg_label": ("Мессеж", "Message", "메시지"),
     "ch.ph": ("Дасгалжуулагчаас асуух…", "Ask your coach…", "코치에게 물어보기…"),
     "ch.send": ("Илгээх", "Send", "보내기"),
