@@ -17,6 +17,7 @@
 | **Neon** | PostgreSQL өгөгдлийн сан (`DATABASE_URL`) | console.neon.tech |
 | **Anthropic Console** | Claude API түлхүүр, зардал, spending limit | console.anthropic.com |
 | **Figma** | Дизайн систем (өнгө, текст стиль, Button) | [FitCoach — Design System](https://www.figma.com/design/fKZk2NEXCnJI5hDIdeBEIg) |
+| **Agent notebook** | Агентыг алхам алхмаар бүтээх (Colab, Gemini) | [Colab-д нээх](https://colab.research.google.com/github/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/notebooks/agent_basics.ipynb) |
 | **Usability test** | Заавар, хүснэгт (Claude Doc) | [Usability test](https://claude.ai/artifact/JWYwCxDeGkZAmA7bcs9P7c) |
 
 Нууц мэдээлэл (`ANTHROPIC_API_KEY`, `DATABASE_URL`) зөвхөн Render-ийн **Environment** болон локал `.env`-д байна — GitHub, чат, screenshot-д хэзээ ч бүү оруул.
@@ -51,6 +52,7 @@ uvicorn app.main:app --reload
 
 ```
 README.md            Энэ файл
+notebooks/agent_basics.ipynb  Агентын үндэс (Colab): tool → function calling → agent loop → санах ой
 docs/
   DATA.md            API-ийн хүсэлт/хариуны хэлбэр
   DEPLOY.md          Render + Neon дээр байршуулах заавар
