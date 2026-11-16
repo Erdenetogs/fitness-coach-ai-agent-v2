@@ -12,13 +12,20 @@
     <form id="fridge-form" class="card p-4 lg:p-5 space-y-3">
       <label for="photo" id="drop" class="block rounded-2xl border-2 border-dashed border-line bg-paper cursor-pointer overflow-hidden">
         <div id="drop-empty" class="py-9 lg:py-14 text-center">
-          <span class="msr text-[38px] lg:text-[44px] text-track">photo_camera</span>
+          <span class="msr text-[38px] lg:text-[44px] text-track">add_photo_alternate</span>
           <p class="font-semibold mt-1">{{ t('fd.photo') }}</p>
           <p class="text-ink-2 text-[13px]">{{ t('fd.photo_sub') }}</p>
         </div>
         <img id="preview" alt="{{ t('fd.photo_alt') }}" class="hidden w-full max-h-64 lg:max-h-80 object-cover">
       </label>
-      <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" class="sr-only">
+      <!-- Зургийн сан: capture-гүй тул утас камер эсвэл галерейгаас сонгуулна -->
+      <input id="photo" name="photo" type="file" accept="image/*" class="sr-only">
+      <!-- Камер: шууд камер нээнэ -->
+      <input id="photo-cam" type="file" accept="image/*" capture="environment" class="sr-only">
+      <div class="grid grid-cols-2 gap-2">
+        <label for="photo" class="btn btn-ghost cursor-pointer"><span class="msr">photo_library</span>{{ t('fd.gallery') }}</label>
+        <label for="photo-cam" class="btn btn-ghost cursor-pointer"><span class="msr">photo_camera</span>{{ t('fd.camera') }}</label>
+      </div>
 
       <div>
         <label for="ingredients" class="label">{{ t('fd.or_type') }}</label>
@@ -62,18 +69,42 @@
   const btnHtml = btn.innerHTML;
   let lastRecipes = [];
 
-  photo.addEventListener("change", () => {
-    const f = photo.files[0];
+  const photoCam = document.getElementById("photo-cam");
+  let chosen = null;   // илгээх зураг (томыг нь багасгасан)
+
+  /** Утасны том зургийг (5–15MB) 1600px JPEG болгож ~0.5MB болгоно. */
+  async function shrink(file) {
+    if (file.size < 1.5 * 1024 * 1024 && /^image\/(jpeg|png|webp)$/.test(file.type)) return file;
+    try {
+      const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+      const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.85));
+      return blob ? new File([blob], "fridge.jpg", { type: "image/jpeg" }) : file;
+    } catch (_) {
+      return file;   // HEIC гэх мэт хөрвүүлж чадаагүй бол эх файлаар
+    }
+  }
+
+  async function onPick(input) {
+    const f = input.files[0];
+    input.value = "";
     if (!f) return;
-    if (f.size > 5 * 1024 * 1024) { toast(t("js.fd_big")); photo.value = ""; return; }
-    preview.src = URL.createObjectURL(f);
+    const small = await shrink(f);
+    if (small.size > 5 * 1024 * 1024) { toast(t("js.fd_big")); return; }
+    chosen = small;
+    preview.src = URL.createObjectURL(small);
     preview.classList.remove("hidden"); empty.classList.add("hidden");
-  });
+  }
+  photo.addEventListener("change", () => onPick(photo));
+  photoCam.addEventListener("change", () => onPick(photoCam));
 
   document.getElementById("fridge-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const fd = new FormData();
-    if (photo.files[0]) fd.append("photo", photo.files[0]);
+    if (chosen) fd.append("photo", chosen, chosen.name || "fridge.jpg");
     fd.append("ingredients", document.getElementById("ingredients").value);
     btn.disabled = true;
     btn.innerHTML = `<span class="msr">hourglass_top</span>${escapeHtml(t("js.fd_busy"))}`;
