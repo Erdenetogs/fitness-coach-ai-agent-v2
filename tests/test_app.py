@@ -18,7 +18,7 @@ os.environ.pop("ANTHROPIC_API_KEY", None)
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import db, planner, xp  # noqa: E402
+from app import db, demo, planner, xp  # noqa: E402
 from app.agent import llm  # noqa: E402
 from app import main  # noqa: E402
 from app.main import app  # noqa: E402
@@ -366,9 +366,13 @@ class DemoUserTest(unittest.TestCase):
         plan = db.get_plan(uid)
         cardio = [d for d in planner.WEEKDAYS if plan[d]["focus"] == "cardio"]
         self.assertEqual(len(cardio), 1)
-        names = [e["name"] for e in plan[cardio[0]]["exercises"]]
-        for jumping in ("Үсрэлт (jumping jack)", "Бёрпи", "Уулчин (mountain climber)"):
-            self.assertNotIn(jumping, names)  # чатад "үсрэлт, бёрпиг хасав" гэсэн
+        ex = plan[cardio[0]]["exercises"]
+        self.assertEqual(ex, demo.SHORT_CARDIO)  # чатад "20 минутад багтаахаар богиносгосон" гэсэн
+        self.assertNotIn("Бёрпи", [e["name"] for e in ex])
+        mins = sum(e.get("duration_min", 0) for e in ex)
+        self.assertLessEqual(mins, 20)
+        chat = " ".join(m["content"] for m in db.get_messages(uid))
+        self.assertNotIn("өвдөг", chat.lower())
 
         prog = c.get("/api/progress").json()
         change = round(prog["weights"][-1]["kg"] - prog["weights"][0]["kg"], 1)
