@@ -2,9 +2,33 @@
 
 **🌐 Ажиллаж буй хувилбар: https://fitcoach-nl0o.onrender.com** (үнэгүй сервер — 15 мин ашиглаагүй бол унтаж, эхний нээлт ~50 сек удаан)
 
-Капстоун дизайн 2026-2 · 4 хүний баг
+Капстоун дизайн 2026-2 · 5-р баг (4 хүн)
 
 Хэрэглэгчийн зорилгоор долоо хоногийн дасгалын төлөвлөгөө гаргаж, чатаар хүссэн өөрчлөлтийг **агент өөрөө хэрэгсэл дуудаж** хийдэг, хөргөгчний зургаас жор санал болгодог веб апп.
+
+## Холбоосууд
+
+| Хэрэгсэл | Юунд | Холбоос |
+|---|---|---|
+| **Апп** | Ажиллаж буй сайт | https://fitcoach-nl0o.onrender.com |
+| **GitHub** | Код, PR, ажлын жагсаалт (Issues + Milestones) | [Issues](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/issues) · [Milestones](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/milestones) |
+| **GitHub Actions** | PR бүрт тест (SQLite + Postgres), сайтыг сэрүүн байлгах | [Actions](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/actions) |
+| **Render** | Сервер. `main`-д merge хийсний дараа **Manual Deploy → Deploy latest commit** | dashboard.render.com |
+| **Neon** | PostgreSQL өгөгдлийн сан (`DATABASE_URL`) | console.neon.tech |
+| **Anthropic Console** | Claude API түлхүүр, зардал, spending limit | console.anthropic.com |
+| **Figma** | Дизайн систем (өнгө, текст стиль, Button) | [FitCoach — Design System](https://www.figma.com/design/fKZk2NEXCnJI5hDIdeBEIg) |
+| **Usability test** | Заавар, хүснэгт (Claude Doc) | [Usability test](https://claude.ai/artifact/JWYwCxDeGkZAmA7bcs9P7c) |
+
+Нууц мэдээлэл (`ANTHROPIC_API_KEY`, `DATABASE_URL`) зөвхөн Render-ийн **Environment** болон локал `.env`-д байна — GitHub, чат, screenshot-д хэзээ ч бүү оруул.
+
+### Хугацаа (Milestones)
+
+| Milestone | Хугацаа | Issue |
+|---|---|---|
+| ✅ MVP | 11/16 | — |
+| Туршилт | 11/30 | #4 usability test · #5 iPhone, демо видео |
+| Тайлан ба видео | 12/7 | #6 backend · #7 агент · #33 тайлан, слайд, 결과보고 |
+| 🎤 Илтгэл | 12/10 | #33 |
 
 ## Асаах (Windows, VS Code terminal)
 
