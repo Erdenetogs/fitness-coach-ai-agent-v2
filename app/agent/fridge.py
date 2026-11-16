@@ -13,6 +13,8 @@ RECIPE_TOOL = {
     "input_schema": {
         "type": "object",
         "properties": {
+            "seen_en": {"type": "array", "items": {"type": "string"}, "maxItems": 15,
+                        "description": "First, in English: short names of food items clearly visible (e.g. cauliflower, mushrooms, ground beef)"},
             "ingredients": {"type": "array", "items": {"type": "string"}, "description": "Итгэлтэй танигдсан хүнсний орцууд — богино нэр (1–3 үг), тайлбаргүй", "maxItems": 15},
             "recipes": {
                 "type": "array",
@@ -33,7 +35,7 @@ RECIPE_TOOL = {
                 },
             },
         },
-        "required": ["ingredients", "recipes"],
+        "required": ["seen_en", "ingredients", "recipes"],
     },
 }
 
@@ -77,6 +79,10 @@ def _analyze_live(user, n, memories, image_bytes, media_type, typed, lang="mn") 
           "- Хоёр зүйлийн аль нь болохыг мэдэхгүй бол (\"Сонгино / сармис\" гэх мэт) бүү бич — алгас. "
           "\"Тодорхойгүй\", \"таамаглал\" гэсэн үгтэй орц огт бүү бич.\n"
           "- Нэг зүйлийг давтахгүй, хамгийн ихдээ 15 орц.\n"
+          "- Эхлээд seen_en-д англиар тань, дараа нь ingredients-д түүнийгээ ЯГ орчуул (зөв, түгээмэл нэрээр: "
+          "cauliflower = Цэцэгт байцаа, mushroom = Мөөг, ground meat = Татсан мах, sausage = Хиам, "
+          "condensed milk = Өтгөрүүлсэн сүү, butter = Цөцгийн тос). Шинэ үг бүү зохио.\n"
+          "Жор бүрд бодит калори, уураг, алхмуудыг бүрэн бич — 0 эсвэл placeholder бүү бич.\n"
         + f"Орц, жорын нэр, алхам, тайлбарыг бүгдийг {i18n.AI_LANG[i18n.norm(lang)]} хэлээр бич."
     )
     content = []
@@ -87,17 +93,45 @@ def _analyze_live(user, n, memories, image_bytes, media_type, typed, lang="mn") 
                        "data": base64.b64encode(image_bytes).decode()},
         })
     content.append({"type": "text", "text": prompt})
-    resp = client.messages.create(
-        model=llm.MODEL,
-        max_tokens=2048,
-        tools=[RECIPE_TOOL],
-        tool_choice={"type": "tool", "name": "submit_recipes"},
-        messages=[{"role": "user", "content": content}],
-    )
-    for block in resp.content:
-        if block.type == "tool_use":
-            return block.input
-    raise ValueError("submit_recipes дуудагдсангүй")
+    last = None
+    for _ in range(2):  # дутуу/эвдэрсэн хариу ирвэл нэг удаа дахин оролдоно
+        resp = client.messages.create(
+            model=llm.MODEL,
+            max_tokens=4096,  # монгол текст олон токен авдаг — 2048-д 3 жор тасарч байсан
+            tools=[RECIPE_TOOL],
+            tool_choice={"type": "tool", "name": "submit_recipes"},
+            messages=[{"role": "user", "content": content}],
+        )
+        block = next((b for b in resp.content if b.type == "tool_use"), None)
+        if block is None:
+            last = ValueError("submit_recipes дуудагдсангүй")
+            continue
+        data = clean_result(block.input)
+        if data["recipes"] and resp.stop_reason != "max_tokens":
+            return data
+        last = ValueError("жор дутуу ирсэн")
+    raise last
+
+
+def _good_recipe(r) -> bool:
+    if not isinstance(r, dict):
+        return False
+    text = " ".join(str(r.get(k, "")) for k in ("title", "why")).lower()
+    return (bool(str(r.get("title", "")).strip()) and isinstance(r.get("kcal"), int) and r["kcal"] > 0
+            and isinstance(r.get("steps"), list) and len(r["steps"]) > 0 and "placeholder" not in text)
+
+
+def clean_result(data: dict) -> dict:
+    """AI-ийн хариуг цэгцэлнэ: эвдэрсэн жорыг хасаж, давхардсан орцыг арилгана."""
+    seen, ingredients = set(), []
+    for x in data.get("ingredients") or []:
+        x = str(x).strip()
+        key = x.lower()
+        if x and key not in seen:
+            seen.add(key)
+            ingredients.append(x)
+    recipes = [r for r in (data.get("recipes") or []) if _good_recipe(r)]
+    return {"ingredients": ingredients[:15], "recipes": recipes[:3]}
 
 
 def _mock(user: dict, typed: str, lang: str = "mn") -> dict:

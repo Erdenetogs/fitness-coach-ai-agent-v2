@@ -658,6 +658,16 @@ class GuardrailsTest(unittest.TestCase):
         self.assertIn("error", run_tool(b, "forget_memory", {"memory_id": mid}))
         self.assertEqual(len(db.get_memories(a)), 1)
 
+
+class FridgeCleanTest(unittest.TestCase):
+    def test_drops_broken_recipes_and_duplicates(self):
+        from app.agent.fridge import clean_result
+        good = {"title": "Салат", "kcal": 320, "protein_g": 24, "time_min": 15, "uses": [], "steps": ["Хольно"], "why": "Уураг ихтэй"}
+        bad = {"title": "Цуглуулга", "kcal": 0, "protein_g": 0, "time_min": 30, "uses": [], "steps": [], "why": "placeholder"}
+        r = clean_result({"ingredients": ["Бяслаг", "бяслаг", " ", "Банана"], "recipes": [bad, good]})
+        self.assertEqual(r["ingredients"], ["Бяслаг", "Банана"])
+        self.assertEqual([x["title"] for x in r["recipes"]], ["Салат"])
+
 if __name__ == "__main__":
     unittest.main()
 
