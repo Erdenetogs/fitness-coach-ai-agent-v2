@@ -3,6 +3,7 @@
 Claude-ийн зураг харах (vision) чадварыг ашиглана. Хариуг заавал тогтсон JSON бүтэцтэй
 авахын тулд "submit_recipes" хэрэгслийг заавал дуудуулна (tool_choice)."""
 import base64
+import re
 
 from app import db, i18n, planner
 from app.agent import llm
@@ -106,7 +107,7 @@ def _analyze_live(user, n, memories, image_bytes, media_type, typed, lang="mn") 
         if block is None:
             last = ValueError("submit_recipes дуудагдсангүй")
             continue
-        data = clean_result(block.input)
+        data = clean_result(block.input, i18n.norm(lang))
         if data["recipes"] and resp.stop_reason != "max_tokens":
             return data
         last = ValueError("жор дутуу ирсэн")
@@ -121,12 +122,15 @@ def _good_recipe(r) -> bool:
             and isinstance(r.get("steps"), list) and len(r["steps"]) > 0 and "placeholder" not in text)
 
 
-def clean_result(data: dict) -> dict:
-    """AI-ийн хариуг цэгцэлнэ: эвдэрсэн жорыг хасаж, давхардсан орцыг арилгана."""
+def clean_result(data: dict, lang: str = "mn") -> dict:
+    """AI-ийн хариуг цэгцэлнэ: эвдэрсэн жорыг хасаж, давхардсан орцыг арилгана.
+    Монгол/солонгос хэл дээр зөвхөн латин үсгээр бичигдсэн (орчуулагдаагүй, "Cargot" гэх мэт) орцыг хасна."""
     seen, ingredients = set(), []
     for x in data.get("ingredients") or []:
         x = str(x).strip()
         key = x.lower()
+        if lang != "en" and x and not re.search(r"[^\W\d_a-zA-Z]", x):
+            continue  # латин үсэг л байна — орчуулагдаагүй
         if x and key not in seen:
             seen.add(key)
             ingredients.append(x)

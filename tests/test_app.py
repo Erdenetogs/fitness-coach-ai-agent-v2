@@ -668,6 +668,12 @@ class FridgeCleanTest(unittest.TestCase):
         self.assertEqual(r["ingredients"], ["Бяслаг", "Банана"])
         self.assertEqual([x["title"] for x in r["recipes"]], ["Салат"])
 
+    def test_drops_untranslated_latin_names(self):
+        from app.agent.fridge import clean_result
+        r = clean_result({"ingredients": ["Лууван", "Cargot", "Өндөг (6)"], "recipes": []}, "mn")
+        self.assertEqual(r["ingredients"], ["Лууван", "Өндөг (6)"])
+        self.assertEqual(clean_result({"ingredients": ["Carrot"], "recipes": []}, "en")["ingredients"], ["Carrot"])
+
 if __name__ == "__main__":
     unittest.main()
 
