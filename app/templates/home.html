@@ -45,7 +45,7 @@
           {% if n_done == total %}{{ t('home.done_all') }}{% else %}{{ t('home.left', n=total - n_done) }}{% endif %}
         </p>
         <ul class="hidden lg:flex flex-wrap gap-1.5 mt-4" aria-hidden="true">
-          {% for e in today.exercises %}<li class="text-[13px] rounded-full px-3 py-1 {{ 'bg-mint/25 text-white/60 line-through' if e.name in done else 'bg-white/10 text-white/85' }}">{{ ex(e.name) }}</li>{% endfor %}
+          {% for e in today.exercises %}<li class="text-[13px] rounded-full px-3 py-1 {{ 'bg-mint/25 text-white/60 line-through' if e.name in done else 'bg-white/10 text-white/85' }}">{{ ex(e) }}</li>{% endfor %}
         </ul>
         <a href="/workout" class="btn bg-white text-[#16213a] mt-4 lg:mt-5 py-2.5 text-sm">
           {% if n_done == total %}<span class="msr text-[20px]">checklist</span>{{ t('home.view') }}{% else %}<span class="msr text-[20px]">play_arrow</span>{% if n_done %}{{ t('home.continue') }}{% else %}{{ t('home.start') }}{% endif %}{% endif %}

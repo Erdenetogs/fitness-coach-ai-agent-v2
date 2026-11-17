@@ -275,7 +275,7 @@ def _chat_mock(uid: int, message: str, lang: str = "mn") -> dict:
     plan = use("get_workout_plan")
     today = plan["plan"].get(plan["today"], {})
     if today.get("exercises"):
-        names = ", ".join(i18n.exercise(e["name"], lang) for e in today["exercises"][:3])
+        names = ", ".join(i18n.exercise(e, lang) for e in today["exercises"][:3])
         msg = t("m.today_ex", title=i18n.day_title(today, lang), names=names)
     else:
         msg = t("m.today_rest")

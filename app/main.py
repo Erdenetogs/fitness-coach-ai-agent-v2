@@ -75,8 +75,8 @@ def _title(ctx, day):
 
 
 @pass_context
-def _ex(ctx, name):
-    return i18n.exercise(name, ctx.get("lang", i18n.DEFAULT))
+def _ex(ctx, item):
+    return i18n.exercise(item, ctx.get("lang", i18n.DEFAULT))
 
 
 @pass_context

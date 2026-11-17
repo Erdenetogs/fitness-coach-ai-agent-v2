@@ -478,6 +478,9 @@ EXERCISES: dict[str, tuple[str, str]] = {
     "Мөрний түлхэлт": ("Shoulder press", "숄더 프레스"),
     "Кабель трицепс": ("Cable triceps pushdown", "케이블 트라이셉스 푸시다운"),
     "Штанга суулт": ("Barbell squat", "바벨 스쿼트"),
+    "Lat pulldown": ("Lat pulldown", "랫 풀다운"),
+    "Leg press": ("Leg press", "레그 프레스"),
+    "Leg curl": ("Leg curl", "레그 컬"),
     "Leg press": ("Leg press", "레그 프레스"),
     "Leg curl": ("Leg curl", "레그 컬"),
     "Гүйлтийн зам": ("Treadmill", "러닝머신"),
@@ -565,14 +568,26 @@ def day_title(day: dict, lang: str) -> str:
     focus = (day or {}).get("focus")
     if focus in ("upper", "lower", "cardio", "full", "rest"):
         return t(f"focus.{focus}", lang)
+    lang = norm(lang)
+    if lang != "mn" and (day or {}).get(f"title_{lang}"):
+        return day[f"title_{lang}"]  # агент өөрчлөхдөө 3 хэлээр нэр өгсөн
     title = (day or {}).get("title") or ""
     if not title:
         return t("focus.rest", lang)
-    return t(_TITLES[title], lang) if title in _TITLES else title
+    if title in _TITLES:
+        return t(_TITLES[title], lang)
+    # Агентын бичсэн монгол гарчиг, орчуулгагүй → англи/солонгос дээр холилдохгүйн тулд ерөнхий нэр
+    return title if lang == "mn" else t("focus.custom", lang)
 
 
-def exercise(name: str, lang: str) -> str:
+def exercise(name, lang: str) -> str:
+    """Дасгалын нэрийг сонгосон хэлээр. `name` нь нэр (str) эсвэл төлөвлөгөөний дасгал (dict) байж болно —
+    агентын нэмсэн дасгалд name_en / name_ko байдаг тул тэдгээрийг шууд ашиглана."""
     lang = norm(lang)
+    if isinstance(name, dict):
+        if lang != "mn" and name.get(f"name_{lang}"):
+            return name[f"name_{lang}"]
+        name = name.get("name", "")
     if lang == "mn" or name not in EXERCISES:
         return name
     return EXERCISES[name][0 if lang == "en" else 1]

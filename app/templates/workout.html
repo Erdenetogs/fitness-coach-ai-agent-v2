@@ -30,18 +30,18 @@
         <label class="flex-1 min-w-0 p-3.5 lg:p-4 flex items-center gap-3.5 {{ 'done-row' if is_done }} {{ 'cursor-pointer' if is_today }}">
           <span class="w-12 h-12 rounded-xl bg-track-soft text-track grid place-items-center flex-none"><span class="msr text-[24px]">{{ e.icon or 'fitness_center' }}</span></span>
           <span class="flex-1 min-w-0">
-            <span class="ex-name block font-semibold">{{ ex(e.name) }}</span>
+            <span class="ex-name block font-semibold">{{ ex(e) }}</span>
             <span class="block text-ink-2 text-[13px] num-ish">
               {% if e.sets %}{{ t('wo.sets', sets=e.sets, reps=e.reps or 10) }}{% elif e.duration_min %}{{ t('wo.minutes', n=e.duration_min) }}{% endif %}
             </span>
           </span>
           {% if is_today %}
-          <input type="checkbox" class="tick" data-exercise="{{ e.name }}" {{ 'checked' if is_done }} aria-label="{{ t('wo.done_aria', name=ex(e.name)) }}">
+          <input type="checkbox" class="tick" data-exercise="{{ e.name }}" {{ 'checked' if is_done }} aria-label="{{ t('wo.done_aria', name=ex(e)) }}">
           {% endif %}
         </label>
         {# Заавар: зураг + алхмууд. Агентын зохиосон, санд байхгүй дасгалд товч гарахгүй. #}
         {% if g %}
-        <button type="button" class="guide-btn" data-guide="{{ g.key }}" data-name="{{ ex(e.name) }}" aria-label="{{ t('wo.guide_aria', name=ex(e.name)) }}" title="{{ t('wo.guide_aria', name=ex(e.name)) }}"><span class="msr text-[22px]">help</span></button>
+        <button type="button" class="guide-btn" data-guide="{{ g.key }}" data-name="{{ ex(e) }}" aria-label="{{ t('wo.guide_aria', name=ex(e)) }}" title="{{ t('wo.guide_aria', name=ex(e)) }}"><span class="msr text-[22px]">help</span></button>
         {% endif %}
       </li>
       {% endfor %}

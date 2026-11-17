@@ -678,6 +678,39 @@ class FridgeCleanTest(unittest.TestCase):
         self.assertEqual(r["ingredients"], ["Лууван", "Өндөг (6)"])
         self.assertEqual(clean_result({"ingredients": ["Carrot"], "recipes": []}, "en")["ingredients"], ["Carrot"])
 
+
+class I18nAgentPlanTest(unittest.TestCase):
+    """Агентын өөрчилсөн дасгалын нэр хэл солиход холилдохгүй байх ёстой."""
+    def test_agent_names_follow_language(self):
+        from app.agent import tools
+        c = TestClient(app)
+        c.post("/demo")
+        uid = db.get_user_by_token(c.cookies.get("fitcoach_token"))["id"]
+        wd = planner.WEEKDAYS[db.local_date().weekday()]
+        r = tools.run_tool(uid, "update_workout_day", {"day": wd, "title": "Богино кардио",
+            "title_en": "Short cardio", "title_ko": "짧은 유산소", "reason": "завгүй",
+            "exercises": [{"name": "Шат өгсөх", "name_en": "Stair climb", "name_ko": "계단 오르기", "duration_min": 10},
+                          {"name": "Планк", "name_en": "Planky", "name_ko": "x", "sets": 2, "reps": 20}]})
+        self.assertTrue(r["ok"])
+        self.assertNotIn("name_en", r["plan_day"]["exercises"][1])  # мэддэг дасгалд өөрийн орчуулга
+        c.get("/lang/en"); h = c.get("/").text
+        self.assertIn("Stair climb", h); self.assertIn("Plank", h); self.assertIn("Short cardio", h)
+        self.assertNotIn("Шат өгсөх", h)
+        c.get("/lang/ko"); h = c.get("/workout").text
+        self.assertIn("계단 오르기", h); self.assertIn("플랭크", h)
+        c.get("/lang/mn"); h = c.get("/").text
+        self.assertIn("Шат өгсөх", h); self.assertIn("Богино кардио", h)
+
+    def test_untranslated_custom_title_not_mixed(self):
+        from app import i18n
+        d = {"focus": "custom", "title": "Миний тусгай өдөр", "exercises": [{"name": "x"}]}
+        self.assertEqual(i18n.day_title(d, "mn"), "Миний тусгай өдөр")
+        self.assertEqual(i18n.day_title(d, "en"), i18n.t("focus.custom", "en"))
+
+    def test_gym_names_translated(self):
+        from app import i18n
+        self.assertEqual(i18n.exercise("Leg press", "ko"), "레그 프레스")
+
 if __name__ == "__main__":
     unittest.main()
 
