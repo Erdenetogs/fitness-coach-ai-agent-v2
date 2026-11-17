@@ -39,20 +39,25 @@ TOOLS = [
             "type": "object",
             "properties": {
                 "day": {"type": "string", "enum": planner.WEEKDAYS},
-                "title": {"type": "string", "description": "Өдрийн нэр, ж: 'Доод бие' эсвэл 'Амрах өдөр'"},
+                "title": {"type": "string", "description": "Өдрийн нэр МОНГОЛООР, ж: 'Доод бие' эсвэл 'Амрах өдөр'"},
+                "title_en": {"type": "string", "description": "Same day title in English"},
+                "title_ko": {"type": "string", "description": "Same day title in Korean"},
                 "exercises": {
                     "type": "array",
                     "description": "Хоосон массив бол амрах өдөр болно.",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "name": {"type": "string"},
+                            "name": {"type": "string", "description": "Дасгалын нэр МОНГОЛООР (хэрэглэгч аль ч хэлээр бичсэн байсан). "
+                                     "Төлөвлөгөөнд байгаа дасгал бол яг тэр нэрийг ашигла"},
+                            "name_en": {"type": "string", "description": "The same exercise name in English"},
+                            "name_ko": {"type": "string", "description": "The same exercise name in Korean"},
                             "icon": {"type": "string", "description": "Material Symbols icon нэр, ж: fitness_center, directions_run, accessibility_new"},
                             "sets": {"type": "integer"},
                             "reps": {"type": "integer"},
                             "duration_min": {"type": "integer"},
                         },
-                        "required": ["name"],
+                        "required": ["name", "name_en", "name_ko"],
                     },
                 },
                 "reason": {"type": "string", "description": "Яагаад өөрчилсөн тухай нэг өгүүлбэр"},
@@ -129,7 +134,7 @@ def _plan_in_language(plan: dict, lang: str) -> list[dict]:
     """Төлөвлөгөөг хэрэглэгчийн хэлээр — сайт дээр харагддагтай яг ижил нэрээр.
     Ингэснээр AI англи/солонгос хариундаа монгол үг холихгүй, сайттай ижил нэр хэрэглэнэ."""
     return [{"day_key": d, "day": i18n.weekday(d, lang), "title": i18n.day_title(plan.get(d, {}), lang),
-             "exercises": [i18n.exercise(e.get("name", ""), lang) for e in plan.get(d, {}).get("exercises", [])]}
+             "exercises": [i18n.exercise(e, lang) for e in plan.get(d, {}).get("exercises", [])]}
             for d in planner.WEEKDAYS]
 
 
@@ -169,13 +174,25 @@ def run_tool(uid: int, name: str, args: dict, lang: str = "mn") -> dict:
         day = args.get("day")
         if day not in planner.WEEKDAYS:
             return {"error": f"day нь эдгээрийн нэг байх ёстой: {', '.join(planner.WEEKDAYS)}"}
-        exercises = [e for e in (args.get("exercises") or []) if isinstance(e, dict) and e.get("name")][:10]
+        keep = ("name", "name_en", "name_ko", "icon", "sets", "reps", "duration_min")
+        exercises = [{k: e[k] for k in keep if e.get(k) not in (None, "")}
+                     for e in (args.get("exercises") or []) if isinstance(e, dict) and e.get("name")][:10]
+        for e in exercises:
+            for k in ("name", "name_en", "name_ko"):
+                if k in e:
+                    e[k] = str(e[k]).strip()[:60]
+            if e["name"] in i18n.EXERCISES:  # мэддэг дасгал бол бидний орчуулгыг ашиглана
+                e.pop("name_en", None), e.pop("name_ko", None)
         plan = db.get_plan(uid)
         plan[day] = {
             "focus": "custom" if exercises else "rest",
             "title": str(args.get("title") or ("Амрах өдөр" if not exercises else "Шинэчилсэн дасгал"))[:40],
             "exercises": [{**{"icon": "fitness_center"}, **e} for e in exercises],
         }
+        if exercises and args.get("title"):
+            for k in ("title_en", "title_ko"):
+                if args.get(k):
+                    plan[day][k] = str(args[k]).strip()[:40]
         db.save_plan(uid, plan)
         return {"ok": True, "day": day, "plan_day": plan[day]}
     if name == "log_weight":
