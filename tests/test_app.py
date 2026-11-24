@@ -711,6 +711,48 @@ class I18nAgentPlanTest(unittest.TestCase):
         from app import i18n
         self.assertEqual(i18n.exercise("Leg press", "ko"), "레그 프레스")
 
+
+class FridgeLanguageTest(unittest.TestCase):
+    """Хөргөгчний орц сонгосон хэлээр гарах ёстой (солонгос хэл дээр монгол гарч байсан)."""
+    def test_prompt_uses_selected_language_examples(self):
+        from app.agent.fridge import _prompt
+        user, n = {"goal": "lose"}, {"kcal": 1800, "protein_g": 100}
+        ko = _prompt(user, n, [], "", "ko")
+        self.assertIn("OUTPUT LANGUAGE: Korean", ko)
+        self.assertIn("계란", ko)
+        self.assertNotIn("Өндөг", ko)
+        self.assertNotIn("Цэцэгт байцаа", _prompt(user, n, [], "", "en"))
+        self.assertIn("Өндөг", _prompt(user, n, [], "", "mn"))
+
+    def test_wrong_language_filtered(self):
+        from app.agent.fridge import clean_result
+        good = {"title": "계란 볶음밥", "kcal": 450, "protein_g": 20, "time_min": 15, "uses": [], "steps": ["볶는다"], "why": "단백질"}
+        bad = {"title": "Өндөгтэй будаа", "kcal": 450, "protein_g": 20, "time_min": 15, "uses": [], "steps": ["x"], "why": "y"}
+        r = clean_result({"ingredients": ["계란", "Өндөг", "버섯"], "recipes": [bad, good]}, "ko")
+        self.assertEqual(r["ingredients"], ["계란", "버섯"])
+        self.assertEqual([x["title"] for x in r["recipes"]], ["계란 볶음밥"])
+        r = clean_result({"ingredients": ["Eggs", "계란", "Өндөг"], "recipes": []}, "en")
+        self.assertEqual(r["ingredients"], ["Eggs"])
+        r = clean_result({"ingredients": ["Өндөг", "계란"], "recipes": []}, "mn")
+        self.assertEqual(r["ingredients"], ["Өндөг"])
+
+    def test_retries_when_all_ingredients_wrong_language(self):
+        from types import SimpleNamespace as NS
+        from unittest import mock
+        from app.agent import fridge
+        good = {"title": "계란 볶음밥", "kcal": 450, "protein_g": 20, "time_min": 15, "uses": [], "steps": ["볶는다"], "why": "단백질"}
+        replies = [{"seen_en": ["egg"], "ingredients": ["Өндөг"], "recipes": [good]},
+                   {"seen_en": ["egg"], "ingredients": ["계란"], "recipes": [good]}]
+        calls = []
+        def create(**kw):
+            calls.append(kw)
+            return NS(stop_reason="tool_use", content=[NS(type="tool_use", input=replies[len(calls) - 1])])
+        client = NS(messages=NS(create=create))
+        with mock.patch.object(fridge.llm, "get_client", return_value=client):
+            out = fridge._analyze_live({"goal": "fit"}, {"kcal": 2000, "protein_g": 90}, [], b"x", "image/jpeg", "", "ko")
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(out["ingredients"], ["계란"])
+
 if __name__ == "__main__":
     unittest.main()
 
