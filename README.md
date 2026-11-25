@@ -128,22 +128,6 @@ uvicorn app.main:app --reload    # http://127.0.0.1:8000
 | Тайлан ба видео | 12/7 | #6 backend · #7 агент · #33 тайлан, слайд, 결과보고 |
 | 🎤 Илтгэл | 12/10 | #33 |
 
-## Асаах (Windows, VS Code terminal)
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate          # Mac/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-copy .env.example .env          # Mac/Linux: cp .env.example .env
-uvicorn app.main:app --reload
-```
-
-- Сайт: http://127.0.0.1:8000
-- Тест: `pip install -r requirements-dev.txt` → `python -m unittest -v` (PR бүрт GitHub Actions автоматаар ажиллуулна)
-- Сервер байршуулах: [docs/DEPLOY.md](docs/DEPLOY.md)
-- API туршилт: http://127.0.0.1:8000/docs
-
-`.env` дотор `ANTHROPIC_API_KEY` байхгүй бол агент **демо горим**-оор ажиллана: бодит хэрэгслүүдийг дуудаж өгөгдлийн санг өөрчилдөг ч хариуг энгийн дүрмээр гаргана. Түлхүүр тавимагц Claude жинхэнэ агент болж ажиллана.
 
 ## Бүтэц
 
