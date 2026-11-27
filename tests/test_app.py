@@ -753,6 +753,22 @@ class FridgeLanguageTest(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertEqual(out["ingredients"], ["계란"])
 
+class MarkWorkoutDoneTest(unittest.TestCase):
+    def test_marks_today_done(self):
+        from app.agent import tools
+        c = TestClient(app)
+        c.post("/demo")
+        uid = db.get_user_by_token(c.cookies.get("fitcoach_token"))["id"]
+        today = planner.today_name()
+        names = {e["name"] for e in db.get_plan(uid).get(today, {}).get("exercises", [])}
+        r = tools.run_tool(uid, "mark_workout_done", {})
+        if not names:
+            self.assertIn("error", r)
+            return
+        self.assertTrue(r.get("ok"), r)
+        self.assertEqual(db.get_done_today(uid), names)
+        self.assertEqual(tools.run_tool(uid, "mark_workout_done", {})["xp"], 0)
+
 if __name__ == "__main__":
     unittest.main()
 
