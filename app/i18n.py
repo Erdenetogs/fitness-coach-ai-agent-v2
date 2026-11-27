@@ -366,6 +366,7 @@ STRINGS: dict[str, tuple[str, str, str]] = {
     "step.get_progress": ("Жингийн явцыг шалгасан", "Checked your weight trend", "체중 변화 확인"),
     "step.update_workout_day": ("{day} гарагийн дасгалыг өөрчилсөн", "Changed {day}'s workout", "{day} 운동 변경"),
     "step.log_weight": ("Жинг бүртгэсэн: {kg} кг", "Logged weight: {kg} kg", "체중 기록: {kg}kg"),
+    "step.mark_workout_done": ("Өнөөдрийн дасгал дууссан", "Marked today's workout as done", "오늘 운동 완료"),
     "step.save_memory": ("Санах ойд хадгалсан: {fact}", "Saved to memory: {fact}", "기억에 저장: {fact}"),
     "step.forget_memory": ("Санах ойгоос устгасан", "Removed from memory", "기억에서 삭제"),
     "step.plan_created": ("Долоо хоногийн төлөвлөгөө үүсгэсэн", "Created your weekly plan", "주간 계획 생성"),

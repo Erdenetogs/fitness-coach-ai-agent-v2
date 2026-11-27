@@ -2,6 +2,7 @@
 Claude ямар хэрэгсэл дуудахаа өөрөө шийднэ. Энд хэрэгсэл бүрийн тайлбар (schema),
 бодит ажиллах функц, frontend-д харагдах "агентын алхам"-ын текстийг тодорхойлно."""
 import json
+from unicodedata import name
 
 from app import db, i18n, planner, xp
 
@@ -75,6 +76,12 @@ TOOLS = [
         },
     },
     {
+        "name": "mark_workout_done",
+        "description": "Хэрэглэгч өнөөдрийн дасгалаа хийж дуусгасан гэж хэлэхэд "
+                       "өнөөдрийн бүх дасгалыг дууссан гэж тэмдэглэж, XP өгнө.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
         "name": "save_memory",
         "description": (
             "Цаашид хэрэг болох хэрэглэгчийн тухай баримтыг санах ойд хадгална: гэмтэл, өвдөлт, "
@@ -109,6 +116,7 @@ STEP_ICONS = {
     "log_weight": "scale",
     "save_memory": "bookmark_added",
     "forget_memory": "bookmark_remove",
+    "mark_workout_done": "task_alt",
 }
 
 
@@ -204,6 +212,16 @@ def run_tool(uid: int, name: str, args: dict, lang: str = "mn") -> dict:
             return {"error": "Жин 25–300 кг хооронд байх ёстой. Хэрэглэгчээс дахин асуу."}
         db.add_weight(uid, kg)
         return {"ok": True, "kg": kg}
+    if name == "mark_workout_done":
+        today = planner.today_name()
+        exercises = db.get_plan(uid).get(today, {}).get("exercises", [])
+        if not exercises:
+            return {"error": "Өнөөдөр амрах өдөр — тэмдэглэх дасгал алга."}
+        for e in exercises:
+            db.set_exercise_done(uid, e["name"], True)
+        gained = xp.award(uid, "workout", db.today(), lang)
+        return {"ok": True, "day": today, "done": [e["name"] for e in exercises],
+                "xp": gained["gained"] if gained else 0}
     if name == "save_memory":
         fact = str(args.get("fact") or "").strip()[:200]
         if not fact:
