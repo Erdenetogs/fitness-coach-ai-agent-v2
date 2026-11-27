@@ -4,6 +4,8 @@
 
 **🌐 서비스 주소: https://fitcoach-nl0o.onrender.com** (무료 서버라 15분 동안 사용이 없으면 잠들며, 첫 접속은 약 50초 걸립니다)
 
+**🤖 AI 에이전트 구조와 코드 위치: [docs/AGENT.md](docs/AGENT.md)** — 에이전트 코드는 [`app/agent/`](app/agent/) 폴더에 있습니다.
+
 ## 한국어
 
 캡스톤디자인 2026-2 · 5조 (4명)
@@ -63,7 +65,7 @@ flowchart LR
 | 데이터베이스 | Neon PostgreSQL (로컬은 SQLite) |
 | 배포 | Render |
 | 디자인 | Figma (디자인 시스템: 색상·텍스트 스타일·버튼) |
-| 테스트 / CI | unittest 71개, GitHub Actions (SQLite + PostgreSQL) |
+| 테스트 / CI | unittest 74개, GitHub Actions (SQLite + PostgreSQL) |
 
 ### 테스트 결과 (2026-11-16, 실제 휴대폰 + Claude API)
 
