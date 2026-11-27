@@ -1,7 +1,7 @@
 # FitCoach AI 에이전트 — 구조와 코드 위치
 
 FitCoach의 AI 에이전트는 **[`app/agent/`](../app/agent/)** 폴더에 직접 구현되어 있습니다.
-Claude API는 판단을 담당하는 언어 모델(두뇌)로만 사용하고, **에이전트 루프 · 도구 8개 · 기억 · 안전 규칙은 팀이 직접 작성**했습니다 (LangChain 등 프레임워크 미사용).
+Claude API는 판단을 담당하는 언어 모델(두뇌)로만 사용하고, **에이전트 루프 · 도구 9개 · 기억 · 안전 규칙은 팀이 직접 작성**했습니다 (LangChain 등 프레임워크 미사용).
 
 ## 1. 왜 "챗봇"이 아니라 "에이전트"인가
 
@@ -10,7 +10,7 @@ Claude API는 판단을 담당하는 언어 모델(두뇌)로만 사용하고, *
 | **목표 / 역할** | 대학생 개인 피트니스 코치 (안전 규칙 포함) | [`coach.py` SYSTEM](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/coach.py#L20) |
 | **인식** | 사용자 프로필·운동 계획·체중 기록·기억을 도구로 직접 조회, 냉장고 사진 인식(vision) | [`tools.py`](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/tools.py#L8), [`fridge.py`](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/fridge.py) |
 | **판단** | 어떤 도구를 어떤 순서로 쓸지 모델이 스스로 결정 | [`coach.py` _loop](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/coach.py#L151) |
-| **행동** | 데이터베이스를 실제로 변경: 운동 계획 수정, 체중 기록, 기억 저장·삭제 | [`tools.py` run_tool](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/tools.py#L141) |
+| **행동** | 데이터베이스를 실제로 변경: 운동 계획 수정, 체중 기록, 운동 완료 기록, 기억 저장·삭제 | [`tools.py` run_tool](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/tools.py#L141) |
 | **반복 (agent loop)** | 도구 결과를 보고 다시 판단, 최대 6단계 | [`MAX_TURNS = 6`](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/coach.py#L17) |
 | **기억** | 저장한 기억을 매 대화마다 시스템 프롬프트에 넣어 다음 대화에서도 활용 | [`_memories_text`](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/coach.py#L78) |
 | **투명성** | 호출한 도구가 답변 아래 "단계"로 표시 | [`step_for`](https://github.com/Erdenetogs/fitness-coach-ai-agent-v2/blob/main/app/agent/tools.py#L115) |
@@ -37,7 +37,7 @@ flowchart LR
     M -->|아니오| R[최종 답변 + 수행 단계 표시]
 ```
 
-## 3. 도구 8개
+## 3. 도구 9개
 
 | 도구 | 하는 일 |
 |---|---|
@@ -47,6 +47,7 @@ flowchart LR
 | `get_progress` | 체중 변화 조회 |
 | `update_workout_day` | 특정 요일 운동을 **수정** |
 | `log_weight` | 체중 **기록** |
+| `mark_workout_done` | 오늘 운동을 **완료로 기록** + XP |
 | `save_memory` | 일정·선호·주의사항을 **기억에 저장** |
 | `forget_memory` | 기억 **삭제** (본인 것만) |
 
@@ -64,4 +65,4 @@ flowchart LR
 - 앱: https://fitcoach-nl0o.onrender.com → 「데모 계정으로 둘러보기」 → 채팅에서 위 예시 입력
 - 채팅 화면 상단에 **「Claude AI 에이전트」**(실제 Claude 연결) 또는 **데모 모드**(API 키 없이 규칙 기반) 표시
 - 서버 상태: https://fitcoach-nl0o.onrender.com/api/status → `"ai_live": true` 이면 실제 에이전트 동작 중
-- 자동 테스트: [`tests/test_app.py`](../tests/test_app.py) (74개, 에이전트 도구·루프 포함)
+- 자동 테스트: [`tests/test_app.py`](../tests/test_app.py) (75개, 에이전트 도구·루프 포함)
